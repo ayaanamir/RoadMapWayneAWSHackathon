@@ -42,7 +42,7 @@ const LABEL = {
   unknown: 'Not enough evidence',
 };
 // Short names for the list tags.
-const SHORT = { still_there: 'Still there', unreported: 'Not reported', fixed_confirmed: 'Fixed' };
+const SHORT = { still_there: 'Still There', unreported: 'Not Reported', fixed_confirmed: 'Fixed' };
 const VERDICT = { pothole: 'Pothole', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not checked yet' };
 
 const map = L.map('map', { zoomControl: true, attributionControl: true }).setView(NEWLAB, 14);
@@ -138,10 +138,10 @@ const byId = (id) => potholes.find((p) => p.pothole_id === id);
 const stateOf = (p) => (p.state === 'unknown' ? 'reported_only' : p.state);
 const countState = (state) => potholes.filter((p) => stateOf(p) === state).length;
 const LEGEND = [
-  ['still_there', 'Still there'],
-  ['unreported', 'Not reported'],
+  ['still_there', 'Still There'],
+  ['unreported', 'Not Reported'],
   ['fixed_confirmed', 'Fixed'],
-  ['reported_only', 'Not checked'],
+  ['reported_only', 'Not Checked'],
 ];
 let filter = null; // a state from LEGEND, or null for all spots
 
