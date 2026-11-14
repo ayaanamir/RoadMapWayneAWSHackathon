@@ -99,15 +99,13 @@ You may **read** anything. You may only **write** in your own area.
 
 ## 6b. Collision check on every message and before EVERY commit
 
-- Every new message: Claude Code runs `python3 scripts/precommit.py --prompt` automatically
-  (`.claude/settings.json` hook) — fetches `origin`, reports new `main` commits and
-  collisions. Other agents: run it yourself at the start of each turn.
-
-- Once per checkout: `git config stillthere.area <your area(s)>` and
-  `python3 scripts/precommit.py --install-hook`.
-- Before every commit and push: `python3 scripts/precommit.py` (fetches `origin`, blocks
-  out-of-area / `shared/` / secret files, and catches teammates' changes to your files).
-- Full checklist: `.claude/skills/no-collisions/SKILL.md` (any agent can read it).
+- `python3 scripts/precommit.py` fetches `origin` and reports where your changes overlap
+  `main` or a teammate's branch (`CONFLICT` = same lines, `OVERLAP` = same file). It does not
+  restrict which files you edit; it only blocks secrets / media / weights.
+- Every new message: Claude Code runs it automatically (`.claude/settings.json` hook).
+  Other agents: run `python3 scripts/precommit.py --prompt` at the start of each turn.
+- Once per clone: `python3 scripts/precommit.py --install-hook` (runs it on every commit).
+- Full workflow: `.claude/skills/no-collisions/SKILL.md` (any agent can read it).
 
 ## 7. Before you finish a task
 

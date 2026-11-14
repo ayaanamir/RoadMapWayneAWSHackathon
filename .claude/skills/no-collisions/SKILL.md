@@ -1,81 +1,52 @@
 ---
 name: no-collisions
-description: Team ruleset that stops the 3 people / agents in this repo from overwriting each other. Use before starting any task, before EVERY commit, before every push or PR, and whenever you're unsure if a file is yours to edit.
+description: Team workflow that stops the 3 people / agents in this repo from overwriting each other — fetch constantly and check whether your changes overlap anyone else's. Use before starting any task, before EVERY commit, before every push or PR.
 ---
 
-# No-collisions ruleset (Still There?, 3 people, many agents)
+# No-collisions workflow (Still There?, 3 people, many agents)
 
-Owners: **Ayaan** = `api` + `map` (+ `repo`), **Muq** = `pipeline`, **Ado** = `live` + `pitch`.
-`shared/` is locked for everyone. Full rules: root `AGENTS.md`. This file is the checklist.
+Owners (who usually works where): **Ayaan** = `api/`, `services/api/`, `apps/map/`;
+**Muq** = `pipeline/`; **Ado** = `apps/live/`, `pitch/`. You may edit any file — the
+tooling doesn't block you. What it does is **fetch and tell you when your changes collide
+with someone else's**, so you can talk before it becomes a merge mess.
 
-| Area | You may write |
-|---|---|
-| `api` | `api/`, `services/api/`, root `package.json` / `package-lock.json` / `tsconfig.json` |
-| `map` | `apps/map/` |
-| `pipeline` | `pipeline/` |
-| `live` | `apps/live/` |
-| `pitch` | `pitch/` |
-| `repo` (Ayaan) | root files, `docs/`, `scripts/`, `.github/`, `.claude/`, `vercel.json` |
-| everyone | append ONE line to `docs/REQUESTS.md` |
-| nobody* | `shared/` (*only after the human says "change the contract": add fields, bump version) |
+## The check: `python3 scripts/precommit.py`
 
-## Once per checkout
+Fetches `origin`, then compares YOUR changes (branch commits + staged + unstaged +
+untracked) with `origin/main` and every other unmerged branch on `origin`. For each file
+you both touched it simulates the merge (nothing on disk changes):
 
-```bash
-git config stillthere.area pipeline          # your area(s), comma list: api,map
-python3 scripts/precommit.py --install-hook  # auto-runs the check on every git commit
-```
+| Result | Meaning | Do |
+|---|---|---|
+| `CONFLICT` | you both changed the same lines | stop, tell them in chat, agree who keeps what, then rebase |
+| `OVERLAP` | same file, different lines | merges cleanly; glance at their change |
+| `SAME` | identical change on both sides | nothing |
+| `New on main` / `main is N ahead` | someone merged | `git pull --rebase origin main` |
+| `BLOCKED` | secret, `.env`, video/`.gpx`/weights, file > 5 MB | remove it; the only thing that stops a commit |
 
-## On EVERY new message (automatic in Claude Code)
-
-`.claude/settings.json` has a `UserPromptSubmit` hook: each time the human sends a message,
-`python3 scripts/precommit.py --prompt` fetches `origin` and puts a short report in your
-context. It never blocks. **Read it before doing anything:**
-- `NEW on origin/main` → `git pull --rebase origin main`; if a commit touches `shared/`,
-  re-read `shared/CONTRACTS.md` and the chat before writing code.
-- `WARN … also edits` → someone else is in your files; check chat first.
-- `FIX BEFORE COMMIT` → the pre-commit hook will block on this; fix it now.
-Other agents (Cursor, Codex): run `python3 scripts/precommit.py --prompt` yourself at the
-start of every turn.
+It runs automatically:
+- **Every new message** (Claude Code): `.claude/settings.json` `UserPromptSubmit` hook runs
+  `--prompt` and puts the report in your context. Read it first. Other agents (Cursor,
+  Codex): run `python3 scripts/precommit.py --prompt` at the start of each turn.
+- **Every commit**, once you run `python3 scripts/precommit.py --install-hook` (per clone).
 
 ## Before starting a task
 
-1. `git fetch origin && git pull --rebase origin main`
+1. `git pull --rebase origin main`
 2. `python3 scripts/chat.py read` — contract changed? someone on the same thing?
 3. `python3 scripts/board.py next <area>` → `python3 scripts/board.py claim <#> "<human>/<agent>"`
-   Never take an issue someone else claimed.
-4. New branch: `git checkout -b <area>/<short-task>`. One agent = one branch = one checkout
+4. `git checkout -b <area>/<short-task>`. One agent = one branch = one checkout
    (second agent → `git worktree add ../<dir> -b <area>/<task>`).
-
-## Before EVERY commit (the hook does this; run it by hand if no hook)
-
-```bash
-python3 scripts/precommit.py
-```
-
-It fetches `origin`, then:
-- **FAIL** if any changed file is outside your area, touches `shared/`, edits (not appends)
-  `docs/REQUESTS.md`, or contains secrets / video / `.gpx` / weights / files > 5 MB.
-- **FAIL** if `origin/main` moved and changed the **same files** you did → `git pull --rebase origin main` first.
-- **WARN** if `origin/main` moved with no overlap → rebase before pushing.
-- **WARN** if another unmerged branch on `origin` edits the same files → read chat, talk first.
-
-On FAIL: fix it. Out-of-area change → `git restore <file>` (or `git restore --staged <file>`)
-and write what you need in `docs/REQUESTS.md`. Never `--no-verify` without telling the chat.
 
 ## Before push / PR
 
-1. `git fetch origin && git pull --rebase origin main`, then `python3 scripts/precommit.py` again.
-2. Rebase conflict in a file **outside your area** → `git rebase --abort`, stop, tell your human.
-   Never resolve someone else's file. Conflict inside your area → resolve, re-run your area check.
-3. Run your area's done check (in your area's `AGENTS.md`).
-4. `git push -u origin <area>/<task>`, PR with `Closes #<n>`, merge as soon as it runs.
-5. `python3 scripts/board.py done <#>` and post `DONE` in chat.
+1. `git pull --rebase origin main`, then `python3 scripts/precommit.py`.
+2. Any `CONFLICT` with someone's branch → agree in chat first; don't resolve their side alone.
+3. Run your area's done check, push, PR with `Closes #<n>`, merge as soon as it runs.
+4. `python3 scripts/board.py done <#>` and post `DONE` in chat.
 
-## Never
+## Still true
 
-- Commit to `main`, `git push --force` to `main`, or rewrite pushed history.
-- Delete, move, or "clean up" another area's files.
-- Import code from another area — talk over the API (`shared/CONTRACTS.md`) only.
-- Add dependencies to another area's `requirements.txt` / `package.json`.
-- Run two agents in the same checkout.
+- `shared/CONTRACTS.md` changes break everyone: only add fields, bump the version, post HEADS-UP.
+- Never commit to `main` directly, never `git push --force` to `main`, never rewrite pushed history.
+- Never commit secrets, video, `.gpx`, or model weights.

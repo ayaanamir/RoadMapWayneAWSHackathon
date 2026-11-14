@@ -1,42 +1,28 @@
 #!/usr/bin/env python3
-"""Collision check: run before EVERY commit (and before every push / PR). No dependencies.
+"""Collision check: fetch, then tell you if your changes overlap someone else's. No dependencies.
 
-  python3 scripts/precommit.py                 # fetch origin, check everything, explain
+  python3 scripts/precommit.py                 # fetch origin + report
   python3 scripts/precommit.py --install-hook  # run it automatically on every `git commit`
+  python3 scripts/precommit.py --prompt        # short report (Claude Code runs this on every message)
   python3 scripts/precommit.py --no-fetch      # offline: skip the fetch
-  python3 scripts/precommit.py --contract      # allow shared/ (only when your human said
-                                               #   "change the contract")
 
-Your area comes from `git config stillthere.area` (comma list, e.g. "api,map"), else
-from the branch prefix (`pipeline/frame-sampler` → pipeline). Set it once per checkout:
+It does NOT restrict which files you may edit. It compares YOUR changes (commits on your
+branch not yet on main + staged + unstaged + untracked) with what others changed:
+  - origin/main since you branched off, and
+  - every other unmerged branch on origin (teammates' work in progress).
 
-  git config stillthere.area pipeline
+For each file you both touched it simulates the merge (`git merge-tree`, nothing on disk changes):
+  CONFLICT  you both changed the same lines → talk / rebase before going further
+  OVERLAP   same file, different lines → merges cleanly, just be aware
+  SAME      you both made the identical change → nothing to do
 
-What it checks (FAIL blocks the commit, WARN just tells you):
-  FAIL  a file you changed is outside your area
-  FAIL  you changed shared/ without --contract
-  FAIL  docs/REQUESTS.md edited instead of appended
-  FAIL  secrets / video / .gpx / weights / files > 5 MB staged
-  FAIL  origin/main moved AND touched the same files as you → rebase first
-  WARN  origin/main moved (no overlap) → pull --rebase soon
-  WARN  another unmerged branch on origin edits the same files as you
-  WARN  you are committing on main
+The only thing that blocks a commit: secrets, .env, video/.gpx/weights, or files > 5 MB.
 """
 import os
 import re
 import subprocess
 import sys
 
-# Areas → path prefixes they may write. "repo" = everything not listed here (Ayaan).
-AREAS = {
-    "api": ["api/", "services/api/", "package.json", "package-lock.json", "tsconfig.json"],
-    "map": ["apps/map/"],
-    "pipeline": ["pipeline/"],
-    "live": ["apps/live/"],
-    "pitch": ["pitch/"],
-}
-SHARED = "shared/"
-APPEND_ONLY = {"docs/REQUESTS.md"}  # anyone may append one line
 BAD_NAMES = re.compile(r"(^|/)\.env$|\.pem$|\.(mp4|mov|avi|gpx|pt|onnx|engine)$", re.I)
 SECRET_PATTERNS = [
     re.compile(r"sk-or-v1-[0-9a-f]{20,}"),                      # OpenRouter
@@ -45,8 +31,7 @@ SECRET_PATTERNS = [
     re.compile(r"(R2_SECRET_ACCESS_KEY|OPENROUTER_API_KEY)\s*=\s*\S{8,}"),
 ]
 MAX_BYTES = 5 * 1024 * 1024
-
-fails, warns = [], []
+BASE = "origin/main"
 
 
 def git(*args, check=False):
@@ -56,27 +41,12 @@ def git(*args, check=False):
     return r.stdout.strip()
 
 
+def ok(*args):
+    return subprocess.run(["git", *args], capture_output=True).returncode == 0
+
+
 def lines(s):
     return {l for l in s.splitlines() if l}
-
-
-def area_of(path):
-    if path.startswith(SHARED):
-        return "shared"
-    for name, prefixes in AREAS.items():
-        if any(path == p or path.startswith(p) for p in prefixes):
-            return name
-    return "repo"
-
-
-def my_areas(branch):
-    cfg = git("config", "--get", "stillthere.area")
-    if cfg:
-        return {a.strip() for a in cfg.split(",") if a.strip()}
-    prefix = branch.split("/", 1)[0] if "/" in branch else ""
-    if prefix in AREAS or prefix == "repo":
-        return {prefix}
-    return set()
 
 
 def install_hook():
@@ -88,139 +58,130 @@ def install_hook():
                 f'exec "{sys.executable}" scripts/precommit.py --hook "$@"\n')
     os.chmod(path, 0o755)
     print(f"Installed {path}. Every `git commit` now fetches + checks for collisions.")
-    print("Bypass only in an emergency: git commit --no-verify (then tell the chat why).")
+
+
+def snapshot():
+    """Commit object of the current working tree (tracked + untracked), via a temp index."""
+    import shutil
+    import tempfile
+    real_index = git("rev-parse", "--git-path", "index")
+    fd, tmp = tempfile.mkstemp(prefix="precommit-index-")
+    os.close(fd)
+    try:
+        if os.path.exists(real_index):
+            shutil.copyfile(real_index, tmp)
+        env = dict(os.environ, GIT_INDEX_FILE=tmp)
+        subprocess.run(["git", "add", "-A"], env=env, capture_output=True)
+        tree = subprocess.run(["git", "write-tree"], env=env, capture_output=True, text=True).stdout.strip()
+        r = subprocess.run(["git", "commit-tree", tree, "-p", "HEAD", "-m", "precommit snapshot"],
+                           capture_output=True, text=True)
+        return r.stdout.strip() or "HEAD"
+    finally:
+        os.unlink(tmp)
+
+
+def conflicted_files(ours, theirs):
+    """Files that would conflict if `theirs` merged into `ours` (simulated, no disk changes)."""
+    r = subprocess.run(["git", "merge-tree", "--write-tree", "--name-only", "--no-messages", ours, theirs],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        return set()
+    out = r.stdout.splitlines()
+    return {l for l in out[1:] if l}  # first line is the tree id
 
 
 def main():
     argv = sys.argv[1:]
     if "--install-hook" in argv:
         return install_hook()
-    hook = "--hook" in argv
-    prompt = "--prompt" in argv  # Claude Code UserPromptSubmit hook: report only, never block
-    contract = "--contract" in argv or os.environ.get("STILLTHERE_CONTRACT") == "1"
+    hook, prompt = "--hook" in argv, "--prompt" in argv
 
     os.chdir(os.path.dirname(os.path.abspath(__file__)))  # works from any cwd
     os.chdir(git("rev-parse", "--show-toplevel", check=True))
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
-    main_before = git("rev-parse", "origin/main")
+    notes, problems, blockers = [], [], []
 
-    # 1. Fetch so we compare against what teammates pushed, not a stale copy.
+    # 1. Fetch.
+    before = git("rev-parse", BASE)
     if "--no-fetch" not in argv:
         try:
             r = subprocess.run(["git", "fetch", "--quiet", "--prune", "origin"],
                                capture_output=True, text=True, timeout=15 if prompt else 60)
             if r.returncode != 0:
-                warns.append(f"git fetch failed (offline?): {r.stderr.strip()[:120]}")
+                notes.append(f"git fetch failed (offline?): {r.stderr.strip()[:120]}")
         except subprocess.TimeoutExpired:
-            warns.append("git fetch timed out — comparing against the last fetched origin.")
-    main_after = git("rev-parse", "origin/main")
-    if prompt and main_before and main_after != main_before:
-        new = git("log", "--format=  %h %s", f"{main_before}..{main_after}")
-        warns.append(f"NEW on origin/main since last check:\n{new}\n  → re-read shared/CONTRACTS.md "
-                     "+ chat if any of these touch the contract.")
+            notes.append("git fetch timed out — using the last fetched copy of origin.")
+    after = git("rev-parse", BASE)
+    if before and after != before:
+        new = git("log", "--format=%h %s", f"{before}..{after}").replace("\n", "\n        ")
+        notes.append(f"New on main since last check:\n        {new}")
 
-    if branch == "main":
-        warns.append("You are on main. Rule 4: work on a branch named <area>/<task>.")
-
-    areas = my_areas(branch)
-    if not areas:
-        fails.append(f"Don't know your area (branch '{branch}' has no area prefix). "
-                     "Run: git config stillthere.area <api|map|pipeline|live|pitch|repo>[,...]")
-
-    # 2. Every file this branch changes: committed-not-on-main + staged + unstaged + untracked.
-    base = "origin/main"
-    committed = lines(git("diff", "--name-only", f"{base}...HEAD"))
+    # 2. My changes, plus a snapshot commit of my whole working tree (incl. untracked) so the
+    #    merge simulation sees uncommitted work too. Uses a throwaway index; your files, index
+    #    and branch are untouched.
+    committed = lines(git("diff", "--name-only", f"{BASE}...HEAD"))
     staged = lines(git("diff", "--name-only", "--cached"))
-    unstaged = set() if hook else lines(git("diff", "--name-only"))
-    untracked = set() if hook else lines(git("ls-files", "--others", "--exclude-standard"))
+    unstaged = lines(git("diff", "--name-only"))
+    untracked = lines(git("ls-files", "--others", "--exclude-standard"))
     mine = committed | staged | unstaged | untracked
+    ours = snapshot() if (staged | unstaged | untracked) else "HEAD"
 
-    # 3. Lane check.
-    for p in sorted(mine):
-        a = area_of(p)
-        if p in APPEND_ONLY:
-            removed = [l for l in git("diff", base, "--", p).splitlines()
-                       if l.startswith("-") and not l.startswith("---")]
-            removed += [l for l in git("diff", "--cached", "--", p).splitlines()
-                        if l.startswith("-") and not l.startswith("---")]
-            if removed:
-                fails.append(f"{p} is append-only; you changed/removed existing lines.")
-            continue
-        if a == "shared":
-            if not contract:
-                fails.append(f"{p}: shared/ is LOCKED. Only with your human's 'change the contract' "
-                             "→ rerun with --contract, add fields only, bump CONTRACTS.md version.")
-            continue
-        if areas and a not in areas:
-            fails.append(f"{p}: belongs to area '{a}', you are '{','.join(sorted(areas))}'. "
-                         "Revert it, or ask for it in docs/REQUESTS.md.")
-
-    # 4. Secrets and big files (staged + committed on this branch).
-    for p in sorted(staged | committed):
-        if BAD_NAMES.search(p) and not p.endswith(".env.example"):
-            fails.append(f"{p}: secrets/media/weights never go in git (rule 5).")
-        if os.path.isfile(p) and os.path.getsize(p) > MAX_BYTES:
-            fails.append(f"{p}: {os.path.getsize(p) // 1024 // 1024} MB — too big for git.")
-    added = [l[1:] for l in (git("diff", "--cached") + "\n" + git("diff", f"{base}...HEAD")).splitlines()
-             if l.startswith("+") and not l.startswith("+++")]
-    for l in added:
-        for pat in SECRET_PATTERNS:
-            if pat.search(l):
-                fails.append(f"Looks like a secret in your diff: {l.strip()[:60]}…")
-                break
-
-    # 5. Did main move under us? Same files = real collision.
-    behind = git("rev-list", "--count", f"HEAD..{base}") or "0"
-    if behind != "0":
-        incoming = lines(git("diff", "--name-only", f"HEAD...{base}"))
-        overlap = sorted(incoming & mine)
-        if overlap:
-            fails.append(f"origin/main is {behind} commit(s) ahead and also changed: "
-                         f"{', '.join(overlap)}. Run: git pull --rebase origin main "
-                         "(conflict in a file outside your area → stop, tell your human).")
-        else:
-            warns.append(f"origin/main is {behind} commit(s) ahead (no file overlap). "
-                         "Run: git pull --rebase origin main before you push.")
-
-    # 6. Other people's unmerged branches touching the same files.
-    me = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}") or f"origin/{branch}"
-    main_subjects = git("log", "--format=%s", "-300", base).splitlines()
+    # 3. Compare with main and with every other unmerged branch on origin.
+    upstream = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}") or f"origin/{branch}"
+    main_subjects = git("log", "--format=%s", "-300", BASE).splitlines()
+    others = [BASE]
     for r in sorted(lines(git("for-each-ref", "--format=%(refname:short)", "refs/remotes/origin"))):
-        if r in ("origin/main", "origin/HEAD", "origin", me):
+        if r in (BASE, "origin/HEAD", "origin", upstream) or ok("merge-base", "--is-ancestor", r, BASE):
             continue
-        if subprocess.run(["git", "merge-base", "--is-ancestor", r, base]).returncode == 0:
-            continue  # already merged (merge commit / fast-forward)
         tip = git("log", "-1", "--format=%s", r)
         if any(re.fullmatch(re.escape(tip) + r" \(#\d+\)", s) for s in main_subjects):
             continue  # squash-merged via a PR
-        theirs = lines(git("diff", "--name-only", f"{base}...{r}"))
-        overlap = sorted(p for p in theirs & mine
-                         if subprocess.run(["git", "diff", "--quiet", r, base, "--", p]).returncode != 0)
-        if overlap:
-            who = git("log", "-1", "--format=%an, %cr", r)
-            warns.append(f"Branch {r} ({who}) also edits: {', '.join(overlap)}. "
-                         "Check the chat before you continue.")
+        others.append(r)
+
+    behind = git("rev-list", "--count", f"HEAD..{BASE}") or "0"
+    for ref in others:
+        theirs = lines(git("diff", "--name-only", f"HEAD...{ref}"))  # what they changed since we split
+        overlap = theirs & mine
+        if not overlap:
+            continue
+        who = "main" if ref == BASE else f"{ref} ({git('log', '-1', '--format=%an, %cr', ref)})"
+        conflicts = conflicted_files(ours, ref) & overlap
+        same = {p for p in overlap - conflicts if ok("diff", "--quiet", ours, ref, "--", p)}
+        clean = overlap - conflicts - same
+        for p in sorted(conflicts):
+            problems.append(f"CONFLICT  {p}: you and {who} changed the same lines.")
+        for p in sorted(clean):
+            problems.append(f"OVERLAP   {p}: also changed by {who} (different lines, merges cleanly).")
+        for p in sorted(same):
+            notes.append(f"SAME      {p}: {who} made the identical change.")
+    if behind != "0":
+        notes.append(f"main is {behind} commit(s) ahead of you → git pull --rebase origin main")
+
+    # 4. Secrets / big files (the only blockers).
+    for p in sorted(staged | committed):
+        if BAD_NAMES.search(p) and not p.endswith(".env.example"):
+            blockers.append(f"{p}: secrets/media/weights don't go in git.")
+        if os.path.isfile(p) and os.path.getsize(p) > MAX_BYTES:
+            blockers.append(f"{p}: {os.path.getsize(p) // 1024 // 1024} MB — too big for git.")
+    for l in (git("diff", "--cached") + "\n" + git("diff", f"{BASE}...HEAD")).splitlines():
+        if l.startswith("+") and not l.startswith("+++") and any(p.search(l) for p in SECRET_PATTERNS):
+            blockers.append(f"Looks like a secret in your diff: {l[1:].strip()[:60]}…")
 
     # Report.
-    if prompt:
-        print(f"[collision check] branch {branch} · area {','.join(sorted(areas)) or '?'}")
-        for w in warns:
-            print(f"  WARN  {w}")
-        for f in fails:
-            print(f"  FIX BEFORE COMMIT  {f}")
-        if not warns and not fails:
-            print("  OK  up to date with origin, no collisions.")
-        return
-    print(f"precommit: branch {branch} · area {','.join(sorted(areas)) or '?'} · "
-          f"{len(mine)} file(s) changed vs origin/main")
-    for w in warns:
-        print(f"  WARN  {w}")
-    for f in fails:
-        print(f"  FAIL  {f}")
-    if fails:
-        print("Blocked. Fix the FAIL lines, then commit again.")
+    print(f"[collision check] {branch} · {len(mine)} changed file(s) vs main · "
+          f"compared with main + {len(others) - 1} teammate branch(es)")
+    for n in notes:
+        print(f"  {n}")
+    for p in problems:
+        print(f"  {p}")
+    for b in blockers:
+        print(f"  BLOCKED   {b}")
+    if not (notes or problems or blockers):
+        print("  OK  up to date, nobody else is touching your files.")
+    if any(p.startswith("CONFLICT") for p in problems):
+        print("  → Tell the other person (chat), then git pull --rebase origin main / coordinate.")
+    if blockers and hook and not prompt:
         sys.exit(1)
-    print("  OK    no collisions." if not warns else "  OK    no blocking problems.")
 
 
 if __name__ == "__main__":
