@@ -5,7 +5,7 @@
 - [x] #48 The stat: closed then reported again. See `STATS.md`, script in `stats/`.
 
 ## By Sun 8 AM (M4)
-- [ ] #49 `DEMO.md`: exact click path, who says what, what to do if Wi-Fi dies
+- [x] #49 `DEMO.md`: exact click path, who says what, what to do if Wi-Fi dies (v1; recheck once the drive footage and pothole model are in)
 - [ ] #50 Backup demo video recorded (link it, don't commit it)
 - [ ] #51 Rehearsed twice, under 3 minutes
 

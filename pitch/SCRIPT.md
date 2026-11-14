@@ -23,10 +23,10 @@ Lines in _italics_ are notes for the speaker, not words to say.
 
 ## 2. The demo (about 60 s)
 
-_Map on the projector. Peterboro pin is red._
+_Map on the projector. Peterboro pin is yellow. Click path: `DEMO.md`._
 
 > This is Still There. Every pin is a pothole the city has a record for.
-> Red means the city says it is fixed, and we saw it is still there.
+> Yellow means the city says it is fixed, and we saw it is still there.
 >
 > _Click Peterboro._ Here is its whole history: reported, closed, reported again,
 > closed again. And here is today: [fill: our frame from the drive], next to the photo
