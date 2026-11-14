@@ -11,7 +11,7 @@ const PIN = {
   still_there: { size: 28, svg: '<circle cx="14" cy="14" r="12" fill="#f2c230" stroke="#0f0f10" stroke-width="2"/><path d="M14 8v7" stroke="#141415" stroke-width="2.6" stroke-linecap="round"/><circle cx="14" cy="19.5" r="1.6" fill="#141415"/>' },
   unreported: { size: 26, svg: '<circle cx="13" cy="13" r="11" fill="#141415" stroke="#ededed" stroke-width="2.4"/><path d="M8.5 11.2a1 1 0 0 1 1-1h1.3l.9-1.4h2.6l.9 1.4h1.3a1 1 0 0 1 1 1v4.6a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z" fill="none" stroke="#ededed" stroke-width="1.4" stroke-linejoin="round"/><circle cx="13" cy="13.4" r="1.7" fill="none" stroke="#ededed" stroke-width="1.4"/>' },
   fixed_confirmed: { size: 24, svg: '<circle cx="12" cy="12" r="10" fill="#4cc38a" stroke="#0f0f10" stroke-width="2"/><path d="m8 12.3 2.7 2.7L16 9.6" fill="none" stroke="#0f0f10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' },
-  reported_only: { size: 14, svg: '<circle cx="7" cy="7" r="5.5" fill="#8e8e94" stroke="#0f0f10" stroke-width="1.5"/>' },
+  reported_only: { size: 14, svg: '<circle cx="7" cy="7" r="5.5" fill="#5c5c62" stroke="#ffffff" stroke-width="1.5"/>' },
 };
 PIN.unknown = PIN.reported_only;
 
@@ -38,14 +38,16 @@ const SHORT = { still_there: 'Still there', unreported: 'Not reported', fixed_co
 const VERDICT = { pothole: 'Pothole', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not checked yet' };
 
 const map = L.map('map', { zoomControl: true, attributionControl: true }).setView(NEWLAB, 14);
+// Light gray "sleet" streets: CARTO's light map, tinted cool gray in style.css (.sleet).
 const tiles = window.CARTO_KEY
-  ? L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${window.CARTO_KEY}`, {
+  ? L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=${window.CARTO_KEY}`, {
+      className: 'sleet',
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO · Reports: Improve Detroit',
     })
   : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      className: 'osm-dark',
+      className: 'osm-sleet',
       attribution: '&copy; OpenStreetMap contributors · Reports: Improve Detroit',
     });
 tiles.addTo(map);
