@@ -6,7 +6,7 @@ chat (issue #1).
 
 | # | Milestone | Done when | Target |
 |---|---|---|---|
-| M0 | **Setup** | Vercel project linked (Neon `DATABASE_URL` + Blob added), OpenRouter key, `.env` filled, `/api/health` live | Sat 2:00 PM |
+| M0 | **Setup** | Vercel project linked (Neon `DATABASE_URL` + R2 vars added), OpenRouter key, `.env` filled, `/api/health` live | Sat 2:00 PM |
 | M1 | **Real city data on the map** | `GET /api/potholes` returns real Improve Detroit reports near Newlab; map shows pins + timelines | Sat 6:00 PM |
 | M2 | **Drive footage → detections** | ≥1 drive clip processed: frames GPS-matched, YOLO + vision verdicts, posted to API, visible on a pin | Sat midnight |
 | M3 | **Live detection end-to-end** | Phone page over HTTPS detects a pothole photo, posts a detection, pin updates on the map | Sun 3:00 AM |

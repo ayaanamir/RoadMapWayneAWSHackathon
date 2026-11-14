@@ -17,7 +17,7 @@ Fill in your GitHub handle. One owner per area — see `AGENTS.md` for the rules
 
 ## Stack
 
-Vercel (pages + Functions, HTTPS) · Neon Postgres · Vercel Blob (images) · YOLO11n (detector)
+Vercel (pages + Functions, HTTPS) · Neon Postgres · Cloudflare R2 (images) · YOLO11n (detector)
 · OpenRouter (vision verify). No AWS. Details: `shared/CONTRACTS.md`.
 
 - Map: `https://<deployment>/` · Phone page: `https://<deployment>/live` · API: `https://<deployment>/api/*`

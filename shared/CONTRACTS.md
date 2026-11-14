@@ -1,6 +1,8 @@
-# Contracts — version 2
+# Contracts — version 3
 
-> Changelog: v2 — stack moved off AWS to Vercel Functions + Neon Postgres + Vercel Blob +
+> Changelog: v3 — images on Cloudflare R2 (public bucket) instead of Vercel Blob; new
+> pothole state `unreported`; only verified detections create new potholes.
+> v2 — stack moved off AWS to Vercel Functions + Neon Postgres + Vercel Blob +
 > OpenRouter vision. `Detection.image_key` → `image_url` (Blob returns full URLs).
 > API paths now live under `/api/*`. v1 — initial contract.
 >
@@ -12,9 +14,9 @@
 | Piece | Service | Owner |
 |---|---|---|
 | Pages (map at `/`, phone page at `/live`) | Vercel static hosting (HTTPS) | Backbone / Live |
-| API | Vercel Functions in root `api/` (TypeScript, `@neondatabase/serverless`, `@vercel/blob`) | Backbone |
+| API | Vercel Functions in root `api/` (TypeScript, `@neondatabase/serverless`, `@aws-sdk/client-s3`) | Backbone |
 | Database | Neon Postgres, project `still-there-builderwars` (schema: `services/api/schema.sql`) | Backbone |
-| Images | Vercel Blob (public), uploaded only through `POST /api/upload` | Backbone |
+| Images | Cloudflare R2 bucket (public read via `R2_PUBLIC_URL`), written only through `POST /api/upload` | Backbone |
 | Vision verify | OpenRouter (OpenAI-compatible chat completions with image input) | Footage |
 | Detector | YOLO11n pothole model (Python in pipeline, ONNX in browser) | Footage / Live |
 
@@ -36,21 +38,22 @@
 | `captured_at` | ISO string | when the frame was taken |
 | `confidence` | float 0–1 | YOLO score |
 | `bbox` | [x, y, w, h] | pixels in the uploaded image |
-| `image_url` | string | URL returned by `POST /api/upload` |
+| `image_url` | string | public R2 URL returned by `POST /api/upload` |
 | `verdict` | `pothole` \| `shadow` \| `patch` \| `unverified` | vision model result |
 | `verdict_reason` | string \| null | one sentence |
 
 ### Pothole (what the map shows)
 `pothole_id`, `lat`, `lon`, `address`, `city_reports[]` (by `created_at`), `detections[]`
 (by `captured_at`), `state` (`still_there|fixed_confirmed|reported_only|unknown`),
-`last_seen_at|null`.
+`last_seen_at|null`. State `unreported` = our verified detections, no city report.
 
 **State rule:** `still_there` = latest city report Closed/Archived and a `pothole`
 detection after its `closed_at`. `fixed_confirmed` = closed, and our latest detection after
 `closed_at` is `patch` (or a pass with no hit). `reported_only` = reports, no detections.
-`unknown` = anything else.
-**Matching rule:** a detection joins the nearest pothole within **50 m**; else it creates a
-new pothole (`state: unknown`).
+`unreported` = no city reports and ≥1 `pothole` verdict (or ≥2 detections). `unknown` = anything else.
+**Matching rule:** a detection joins the nearest pothole within **50 m**. If none is within
+50 m it creates a new pothole **only if** its verdict is `pothole` or a second detection is
+within 50 m; otherwise it's stored with `pothole_id = null` (kept, not shown).
 
 ## API (Vercel Functions; base URL = the Vercel deployment, `API_BASE_URL`)
 
@@ -59,7 +62,7 @@ new pothole (`state: unknown`).
 | GET | `/api/health` | → `{ "ok": true }` | all |
 | GET | `/api/potholes` | → `{ "potholes": Pothole[] }` | map |
 | GET | `/api/potholes?id=<pothole_id>` | → `Pothole` | map |
-| POST | `/api/upload` | raw image body, header `Content-Type: image/jpeg`, query `?name=<detection_id>.jpg` → `{ "image_url": "https://…blob.vercel-storage.com/…" }` | live, pipeline |
+| POST | `/api/upload` | raw image body, header `Content-Type: image/jpeg`, query `?name=<detection_id>.jpg` → `{ "image_url": "<R2_PUBLIC_URL>/frames/<name>" }` | live, pipeline |
 | POST | `/api/detections` | `Detection` or `{ "detections": Detection[] }` → `{ "ok": true, "pothole_ids": ["…"] }` | live, pipeline |
 
 - JSON in/out, CORS `*`. Images must be < 4 MB (Function body limit is 4.5 MB): send

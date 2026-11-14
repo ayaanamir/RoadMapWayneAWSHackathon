@@ -7,7 +7,7 @@ CREATE TABLE potholes (
   lon          double precision NOT NULL,
   address      text NOT NULL DEFAULT '',
   state        text NOT NULL DEFAULT 'unknown'
-               CHECK (state IN ('still_there','fixed_confirmed','reported_only','unknown')),
+               CHECK (state IN ('still_there','fixed_confirmed','reported_only','unreported','unknown')),
   last_seen_at timestamptz,
   updated_at   timestamptz NOT NULL DEFAULT now()
 );

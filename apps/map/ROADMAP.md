@@ -5,7 +5,7 @@
 
 ## M1 · Real city data (by Sat 6 PM)
 - [ ] Load from `/api/potholes`, fall back to fixtures if it fails
-- [ ] Pins colored by `state` (red still_there, green fixed_confirmed, gray otherwise) + legend
+- [ ] Pins colored by `state` (red still_there, orange unreported, green fixed_confirmed, gray otherwise) + legend
 - [ ] Click a pin → side panel timeline: each city report (created → closed) and each detection, in date order
 
 ## M2 · Show our footage (by Sat midnight)
