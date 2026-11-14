@@ -213,3 +213,13 @@ Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on
 - After #88 the API checks live photos with the vision model after it answers, and
   says so with `verifying: n`. The phone now shows "Sent, checking" then, instead of
   the outdated "Sent, needs 2nd sighting". README updated to match.
+
+## Phone / dashcam model switch (branch live/model-switch)
+
+- Two named models in `config.js` (`MODELS`): phone = `models/pothole.onnx`, dashcam =
+  `models/pothole-dashcam.onnx`. Picker on the start screen, layers button in the status
+  box to switch (reloads), `?m=` in the link, last pick remembered.
+- If the picked model is not in the bucket, the page says so and reloads on the phone model.
+- `?model=<URL>` still works for any other file and hides the picker.
+- Tested on the laptop: picker, dashcam fallback (file not uploaded yet), status box name
+  and switch button.

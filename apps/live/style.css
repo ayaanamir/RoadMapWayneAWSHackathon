@@ -114,6 +114,26 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 #start:hover { background: #ffffff; }
 
+/* Model picker on the start screen: two options side by side, the picked one filled. */
+.picker {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.picker[hidden] { display: none; }
+.picker button {
+  min-width: 96px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+}
+.picker button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+
 /* ---- Status box (top left, clear of the notch) ---- */
 
 #stats {

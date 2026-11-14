@@ -97,6 +97,23 @@ After it answers, the API checks each live photo with the vision model (Ayaan's 
 phone says "Sent, checking", and the pin shows up a few seconds later. If the check is
 off, a new spot still needs a 2nd sighting within 50 m (contract v3).
 
+## Two models: phone and dashcam
+
+The page can run either of two pothole models. Pick one on the start screen, or switch
+later with the layers button in the status box (the page reloads and asks for a tap).
+
+| Pick | File in the bucket | Trained on |
+|---|---|---|
+| Phone | `models/pothole.onnx` | close-up photos (Muq's first model, #39) |
+| Dashcam | `models/pothole-dashcam.onnx` | dashcam footage, better from a moving car |
+
+Links: `/live?m=phone` or `/live?m=dashcam`. The phone remembers the last pick.
+If the dashcam file is not uploaded yet, the page says so and goes back to the phone model.
+
+To add the dashcam model (YOLO11n, one class, exported at 640):
+
+    python3 apps/live/tools/upload_model.py best.onnx --name pothole-dashcam.onnx
+
 ## Speed results (#38)
 
 "Model ms" on the page = time for one model run. Lower is better.
