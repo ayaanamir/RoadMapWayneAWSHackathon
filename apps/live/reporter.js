@@ -14,8 +14,10 @@ import {
 
 export class Reporter {
   // onChange(state) is called whenever something the page shows has changed.
-  constructor(onChange = () => {}) {
+  // onPosition(pos) gets every GPS reading (the drive recorder logs them).
+  constructor(onChange = () => {}, onPosition = () => {}) {
     this.onChange = onChange;
+    this.onPosition = onPosition;
     this.position = null;      // latest GPS reading
     this.gpsProblem = "";      // why we have no GPS, if we do not
     this.sending = false;      // a send is in progress
@@ -42,13 +44,14 @@ export class Reporter {
       (pos) => {
         this.position = pos;
         this.gpsProblem = "";
+        this.onPosition(pos);
         this.changed();
       },
       (err) => {
         this.gpsProblem = err.code === err.PERMISSION_DENIED ? "Blocked" : "No signal";
         this.changed();
       },
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }, // fresh fixes only, for the drive track,
     );
   }
 

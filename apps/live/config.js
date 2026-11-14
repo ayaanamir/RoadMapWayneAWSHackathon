@@ -86,6 +86,18 @@ export const CONFIDENCE_MIN = Number(params.get("conf") || 0.35);
 // When two boxes overlap more than this, keep only the stronger one (0 to 1).
 export const OVERLAP_MAX = 0.45;
 
+// ---- Drive recording (recorder.js) ----
+
+// ?rec=1 starts recording as soon as the camera is on (after the Start tap).
+export const REC_AUTO = params.get("rec") === "1";
+
+// ?detect=0 records only: no model, nothing sent. For long drives, in case recording
+// and the model together make the phone hot or drop frames.
+export const DETECT = params.get("detect") !== "0";
+
+// A new video file every this many minutes (iPhone memory). ?seg=1 for quick tests.
+export const SEGMENT_MS = Number(params.get("seg") || 5) * 60_000;
+
 // ---- Sending detections to the API (#42, #43) ----
 
 // Where the API lives. Empty = same site as this page (the normal case on Vercel).

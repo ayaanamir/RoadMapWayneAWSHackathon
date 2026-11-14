@@ -13,6 +13,7 @@ on right now: `WORKLOG.md`.
 | `app.js` | Camera, draw loop, speed numbers, buttons. |
 | `detector.js` | Loads the model and turns a frame into a list of boxes. Knows nothing about the page. |
 | `reporter.js` | GPS, and sends potholes to the API: upload the frame, then the detection. At most 1 per second. |
+| `recorder.js` | Drive recording for the footage pipeline: raw camera video in 5 min files, a GPS track (GPX), and a JSON per file. Nothing is sent. |
 | `config.js` | Settings: model URL, engine, confidence. Most can be set from the URL. |
 | `style.css` | Looks. |
 | `model/` | Local model files for testing. Not in git. |
@@ -46,9 +47,31 @@ Vercel URL (see below).
 | `dry` | `?dry` | Do everything except send. Shows what would be sent. Use for testing. |
 | `sendlabel` | `?sendlabel=cup` | Send boxes with this label instead of `pothole`. Only with `?dry`, or you add fake potholes to the team map. |
 | `api` | `?api=https://wayneawshackathon.vercel.app` | Use another API address (for testing from a laptop). Default: same site. |
+| `rec` | `?rec=1` | Start recording the drive as soon as the camera is on. |
+| `detect` | `?detect=0` | Record only: no model, nothing sent. For long drives. |
+| `seg` | `?seg=1` | Minutes per video file. Default 5. Short values are for testing. |
 
 The model's number of classes is read from the file, so the same page works for the
 stock model (80 classes) and the pothole model (1 class) with no code change.
+
+## Drive recording (for the footage pipeline)
+
+Mount the phone on the dash, open `/live?rec=1&detect=0`, tap **Start recording**.
+Keep the page open with the screen on (the page asks the phone not to sleep).
+
+Files, all named after the UTC time the drive started:
+
+| File | What |
+|---|---|
+| `drive_<start>_seg<N>.mp4` (`.webm` on Chrome/Android) | Raw camera, no boxes. A new file every 5 min. |
+| `drive_<start>_seg<N>.json` | `file, start_utc_ms, end_utc_ms, mime, width, height, fps, user_agent`. The pipeline reads these names, so do not rename them. |
+| `drive_<start>.gpx` | GPX 1.1 track, one point per GPS fix with its time. Saved after every video and on Stop. |
+
+Frame time = `start_utc_ms + frame_index / fps`; the pipeline looks up the place in the GPX.
+Files download on their own; the **Files** list in the status box has a Save button for
+each in case the phone blocks that. Only the newest 3 videos stay in memory. The GPS
+track is also kept in the phone's storage every 10 s: if the page closes mid-drive, the
+start screen offers to save it next time.
 
 ## Model setup
 
