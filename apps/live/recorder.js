@@ -31,7 +31,8 @@ export class DriveRecorder {
     this.driveStart = "";      // UTC stamp for the file names, e.g. 20261114T221530Z
     this.startedAt = 0;        // Date.now() when the drive started
     this.segmentNumber = 0;
-    this.segments = [];        // finished videos: { name, url, blob?, saved }
+    this.clips = [];           // finished clips: { number, video, json, durationMs }
+    this.track = null;         // the GPX file: { name, url, points }
     this.fixes = [];           // GPS track
     this.segmentTimer = null;
     this.logTimer = null;
@@ -59,6 +60,8 @@ export class DriveRecorder {
     this.driveStart = utcStamp(this.startedAt);
     this.segmentNumber = 0;
     this.fixes = [];
+    this.clips = [];
+    this.track = null;
     this.startSegment();
     this.logTimer = setInterval(() => this.saveLog(), LOG_SAVE_MS);
     this.keepScreenOn();
@@ -145,16 +148,12 @@ export class DriveRecorder {
 
     const video = { name: sidecar.file, url: URL.createObjectURL(blob), size: blob.size };
     const json = jsonFile(`${base}.json`, sidecar);
-    this.segments.push(video, json);
+    this.clips.push({ number, video, json, durationMs: info.end_utc_ms - info.start_utc_ms });
     download(video);
     download(json);
 
     // Phones run out of memory fast with video, so only the newest few stay savable.
-    const videos = this.segments.filter((f) => f.name.endsWith(ext));
-    for (const old of videos.slice(0, -KEEP_IN_MEMORY)) {
-      if (old.url) URL.revokeObjectURL(old.url);
-      old.url = null;
-    }
+    for (const old of this.clips.slice(0, -KEEP_IN_MEMORY)) forget(old.video);
 
     // The GPS track so far, after every file (the last one is saved by finishDrive).
     if (this.recording) this.saveGpx();
@@ -170,17 +169,29 @@ export class DriveRecorder {
   // ---- GPS track ----
 
   saveGpx() {
+    if (this.track) forget(this.track);
     const name = `drive_${this.driveStart}.gpx`;
-    const file = { name, url: URL.createObjectURL(new Blob([toGpx(this.fixes, name)], { type: "application/gpx+xml" })) };
-    // One GPX in the list: replace the older copy.
-    const old = this.segments.find((f) => f.name === name);
-    if (old) {
-      URL.revokeObjectURL(old.url);
-      Object.assign(old, file);
-    } else {
-      this.segments.push(file);
-    }
-    download(file);
+    const blob = new Blob([toGpx(this.fixes, name)], { type: "application/gpx+xml" });
+    this.track = { name, url: URL.createObjectURL(blob), points: this.fixes.length };
+    download(this.track);
+  }
+
+  // Take a clip off the list and free its memory. Files already in Downloads stay there.
+  deleteClip(number) {
+    const clip = this.clips.find((c) => c.number === number);
+    if (!clip) return;
+    forget(clip.video);
+    forget(clip.json);
+    this.clips = this.clips.filter((c) => c !== clip);
+    this.changed();
+  }
+
+  // Same for the GPS track, once the drive is over (while recording it keeps growing).
+  deleteTrack() {
+    if (this.recording || !this.track) return;
+    forget(this.track);
+    this.track = null;
+    this.changed();
   }
 
   // Keep the track in the phone's storage, so a crash or reload does not lose it.
@@ -225,10 +236,11 @@ export class DriveRecorder {
     return {
       recording: this.recording,
       elapsedMs: this.recording ? Date.now() - this.startedAt : 0,
-      clips: this.segments.filter((f) => /\.(mp4|webm)$/.test(f.name)).length,
+      recorded: this.recording ? this.segmentNumber - 1 : this.segmentNumber, // finished clips
+      clips: this.clips,
+      track: this.track,
       fixes: this.fixes.length,
       lastFixAt: last ? Date.parse(last.t) : 0,
-      files: this.segments,
       problem: this.problem,
     };
   }
@@ -249,6 +261,12 @@ export function download(file) {
   a.click();
   a.remove();
   file.saved = true;
+}
+
+// Drop a file's data from memory (the list entry stays, marked as not kept).
+function forget(file) {
+  if (file?.url) URL.revokeObjectURL(file.url);
+  if (file) file.url = null;
 }
 
 function jsonFile(name, data) {
