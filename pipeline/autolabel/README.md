@@ -111,3 +111,9 @@ End-to-end team flow:
 5. `eval_models.py --images reviewed/test/images --labels reviewed/test/labels ...` (scoreboard on the test split)
 6. `make_yolo_dataset.py --pair reviewed/train/images reviewed/train/labels --out dataset/ --copy`
 7. Zip `dataset/` and train in Colab.
+
+## feed_city_photos.py
+Keeps /label fed with real Detroit pothole photos from Improve Detroit / SeeClickFix, but only when
+reviewers run low (`--low-water`, default 60 waiting) — so the teacher only labels what people will
+actually review. Hard cost cap `--max-photos` (default 400). Photos go to the train split only.
+`python3 feed_city_photos.py --api https://wayneawshackathon.vercel.app --out DIR`
