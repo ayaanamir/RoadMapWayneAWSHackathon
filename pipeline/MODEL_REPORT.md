@@ -44,6 +44,8 @@ Everything below is reproducible from the notebooks in `pipeline/train/` (on bra
   | 30 (final) | 0.751 | 0.612 | 0.684 | 0.337 |
 
   Noisy mid-run (lr still high), plateaued ~0.68–0.70 in the last 10 epochs.
+  **Best F1 = 0.67 at confidence 0.324** (`results/v2_dashcam/BoxF1_curve.png`) — i.e. even at the
+  best threshold it misses ~1 in 3 potholes or boxes non-potholes ~1 in 3 times on dash-cam frames.
 - **Old-vs-new on the same held-out dash-cam frames:** printed in Colab step 6 but **not captured**
   (runtime disconnected). Needs re-running.
 - **Exports:** `handoff_dashcam/` → `pothole.onnx` (640, for phone), `pothole_960.onnx`, `best.pt`
@@ -107,14 +109,24 @@ Everything below is reproducible from the notebooks in `pipeline/train/` (on bra
 | What | Where |
 |---|---|
 | Notebooks | `pipeline/train/train_pothole.ipynb`, `train_dashcam.ipynb`, `train_dashcam_rdd.ipynb` |
+| **Committed results** (in this repo) | `pipeline/train/results/v1_phone/` → `results.csv` (per-epoch metrics), `pothole.onnx` (live model) · `pipeline/train/results/v2_dashcam/` → `results.csv`, `args.yaml` (exact training config), `results.png`, `BoxPR_curve.png`, `BoxF1_curve.png`, `confusion_matrix.png`, `pothole.onnx` (640), `pothole_960.onnx`. (`best.pt` files stay in Drive.) |
 | v1 weights / ONNX | Muq's Drive `still-there-potholes/handoff/` · ONNX shared: https://drive.google.com/file/d/11DNBg3HDgjZyrn-fL25Ae9iDvJfbTYuY/view |
 | v2 weights / ONNX | `still-there-potholes/handoff_dashcam/` · 640 ONNX shared: https://drive.google.com/file/d/16YD6mbM0wf6UMP3pkVGjQa70wpLa9BlR/view |
 | Training logs (results.csv, curves, confusion matrix) | `still-there-potholes/runs/y11n_merged/`, `runs/y11n_dashcam960/` (ask Muq to share) |
 | Detroit CROWD video ids (from `mapping.csv`, 2 Detroit rows) | sv8WNIh-_w8 jhfGDbwL5MM PXqxzSgdyzU GLZcBdEgfUk PMv1KWDkXE4 44Z4T_wRVmM at_PYHSMu2E 1ICEZAO-lqw Mpe768joUWg |
 
-## 8. Dataset / weight credits
-- Roboflow Universe: `brad-dwyer/pothole-voxrl`, `work-5qhak/potholes-ptvvw`, `potholes-gfbhh/road-damage-ormqn`
-  (+ planned `hiteshram/object-detection-bounding-box-ftfs5`, `vit-76kid/pothole-detection-project-3yiqt`) — see each page for license.
-- Figshare "Potholes dataset with YOLO annotations" (article 21214400) — cite per its page.
-- `dronefreak/rdd2022-yolov8s` (RDD2022), AGPL-3.0 — planned starting weights.
-- Ultralytics YOLO11 / YOLOv8, AGPL-3.0.
+## 8. Datasets & weights — what was used where
+| Dataset / weights | Source | Size / angle | Used in | Role |
+|---|---|---|---|---|
+| `brad-dwyer/pothole-voxrl` v1 | [Roboflow](https://universe.roboflow.com/brad-dwyer/pothole-voxrl/dataset/1) | 665 imgs (465/133/67), mostly close-up/handheld | **v1** train+val | positives |
+| `work-5qhak/potholes-ptvvw` v2 `dashcam_832` | [Roboflow](https://universe.roboflow.com/work-5qhak/potholes-ptvvw/dataset/2) | 730 imgs (550/111/69), dash-cam, 832×832 | **v1** + **v2** train+val | positives |
+| Figshare "Potholes dataset with YOLO annotations" | [Figshare 21214400](https://figshare.com/articles/figure/Potholes_dataset_with_YOLO_annotations/21214400) | 2000+ Full HD dash-cam frames, ~1 GB zip | **v2** train/val/test (contiguous 80/10/10), empty labels = backgrounds | positives + backgrounds |
+| `potholes-gfbhh/road-damage-ormqn` v2 | [Roboflow](https://universe.roboflow.com/potholes-gfbhh/road-damage-ormqn/dataset/2) | 151 imgs, phone photos | test only (6-img test split) | eval |
+| `hiteshram/object-detection-bounding-box-ftfs5` v1 | Roboflow (via [mounishvatti/pothole_detection_yolov8](https://github.com/mounishvatti/pothole_detection_yolov8), MIT) | ? | planned (RDD notebook) | positives |
+| `vit-76kid/pothole-detection-project-3yiqt` v1 | Roboflow (same source) | ? | planned (RDD notebook) | positives |
+| `pothole-detection-xldvi/potholes-with-negative-ddata` | [Roboflow](https://universe.roboflow.com/pothole-detection-xldvi/potholes-with-negative-ddata) | ? | idea only | negatives |
+| RDD2022 (`D40` = pothole) | [sekilab/RoadDamageDetector](https://github.com/sekilab/RoadDamageDetector), CC BY-SA 4.0 | 47k imgs, car-mounted, 6 countries; US subset 424 MB, VOC XML | idea only (#61) | positives |
+| CROWD dash-cam videos | [crowd-dataset/crowd](https://github.com/crowd-dataset/crowd) `mapping.csv` → YouTube ids (§7) | real Detroit dash-cam | Ayaan's qualitative test; planned hard negatives | eval / negatives |
+| `yolo11n.pt` (COCO) | Ultralytics, AGPL-3.0 | — | **v1** start weights | weights |
+| `dronefreak/rdd2022-yolov8s` | [HF](https://huggingface.co/dronefreak/rdd2022-yolov8s), AGPL-3.0, self-reported mAP50 61.5 (4 classes) | — | planned start weights | weights |
+| `peterhdd/pothole-detection-yolov8` | [HF](https://huggingface.co/peterhdd/pothole-detection-yolov8), YOLOv8s 1-class, 100 ep | — | bake-off candidate | weights |
