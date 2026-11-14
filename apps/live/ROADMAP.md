@@ -8,8 +8,8 @@ Matches the board issues (`python3 scripts/board.py next live`).
 
 ## M3 · Live detection (by Sun 3 AM)
 - [x] #41 Rear camera + ONNX Runtime Web (WebGPU, WASM fallback) + boxes on screen (checked on iPhone 16 Safari)
-- [ ] #42 GPS via `navigator.geolocation`; at most 1 detection per second
-- [ ] #43 Upload frame via `POST /api/upload`, then `POST /api/detections` (`source: "live"`)
+- [x] #42 GPS via `navigator.geolocation`; at most 1 detection per second (built, tested with fake GPS)
+- [ ] #43 Upload frame via `POST /api/upload`, then `POST /api/detections` (`source: "live"`) (built, tested on a fake API; waits on Ayaan's real endpoints)
 - [ ] #44 Served by Vercel at `/live` (HTTPS); URL in chat
 - [ ] #45 Fallback: laptop webcam works too (works on laptop Chrome, recheck before demo)
 

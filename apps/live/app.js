@@ -9,12 +9,11 @@
 //   5. Separately, whenever the model is free, we give it the newest frame.
 //      The model is slower than the screen, so the picture stays smooth and the
 //      boxes update as fast as the model allows.
-//
-// Not done here yet (separate board tasks):
-//   #42 GPS + one detection per second, #43 upload frame and POST /api/detections.
-//   The place to hook those in is marked "NEXT" below.
+//   6. After each model run, reporter.js sends a pothole (if any) to the API with
+//      GPS, at most once per second (#42, #43).
 
 import { Detector, EngineFailed } from "./detector.js";
+import { Reporter } from "./reporter.js";
 import { BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend } from "./config.js";
 
 const view = document.getElementById("view");
@@ -29,9 +28,13 @@ const stats = {
   ms: document.getElementById("stat-ms"),
   fps: document.getElementById("stat-fps"),
   count: document.getElementById("stat-count"),
+  gps: document.getElementById("stat-gps"),
+  sent: document.getElementById("stat-sent"),
+  message: document.getElementById("stat-message"),
 };
 
 const detector = new Detector();
+const reporter = new Reporter(showReporterState);
 // The <video> is on the page but invisible. iPhone Safari can give blank frames from a
 // video that is not on the page. We draw its frames onto the canvas ourselves.
 const video = document.getElementById("camera");
@@ -67,6 +70,9 @@ async function start() {
   }
 
   // The camera works: show it now, and load the model on top of it.
+  // Ask for location now too, while we are still close to the tap.
+  reporter.startGps();
+
   startScreen.hidden = true;
   banner.hidden = false;
   requestAnimationFrame(drawLoop);
@@ -155,9 +161,8 @@ async function runModel(w, h) {
     recordSpeed(ms);
     stats.count.textContent = String(boxes.length);
 
-    // NEXT (#42, #43): if a pothole is in `boxes`, and it has been at least 1 second
-    // since the last one we sent, read GPS, save the frame as a JPEG, upload it, and
-    // POST the detection.
+    // Send a pothole to the API if there is one (reporter.js decides if it is time).
+    reporter.maybeSend(boxes, video, w, h);
   } catch (err) {
     console.error("[live] model run failed:", err);
   } finally {
@@ -221,6 +226,14 @@ async function flipCamera() {
   } catch (err) {
     console.error("[live] could not switch camera:", err);
   }
+}
+
+// Update the GPS / sent lines in the stats box.
+function showReporterState({ gps, sent, message }) {
+  stats.gps.textContent = gps;
+  stats.sent.textContent = String(sent);
+  stats.message.textContent = message;
+  stats.message.hidden = !message;
 }
 
 // Show a message on the start screen and on top of the camera picture.

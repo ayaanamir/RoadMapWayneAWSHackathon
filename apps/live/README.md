@@ -12,6 +12,7 @@ on right now: `WORKLOG.md`.
 | `index.html` | The page. Loads ONNX Runtime Web from a CDN, then `app.js`. |
 | `app.js` | Camera, draw loop, speed numbers, buttons. |
 | `detector.js` | Loads the model and turns a frame into a list of boxes. Knows nothing about the page. |
+| `reporter.js` | GPS, and sends potholes to the API: upload the frame, then the detection. At most 1 per second. |
 | `config.js` | Settings: model URL, engine, confidence. Most can be set from the URL. |
 | `style.css` | Looks. |
 | `model/` | Local model files for testing. Not in git. |
@@ -42,6 +43,9 @@ Vercel URL (see below).
 | `model` | `?model=https://.../pothole.onnx` | Load a different model file. |
 | `ep` | `?ep=wasm` or `?ep=webgpu` | Force one engine. Default tries WebGPU, then WASM. |
 | `conf` | `?conf=0.5` | Only show boxes at least this sure (0 to 1). Default 0.35. |
+| `dry` | `?dry` | Do everything except send. Shows what would be sent. Use for testing. |
+| `sendlabel` | `?sendlabel=cup` | Send boxes with this label instead of `pothole`. Only with `?dry`, or you add fake potholes to the team map. |
+| `api` | `?api=https://wayneawshackathon.vercel.app` | Use another API address (for testing from a laptop). Default: same site. |
 
 The model's number of classes is read from the file, so the same page works for the
 stock model (80 classes) and the pothole model (1 class) with no code change.
@@ -70,6 +74,27 @@ You can try it first without a code change: `/live?model=<R2 URL>/models/pothole
 
 The bucket has a rule that lets any web page read (GET) its files. Without it, browsers
 block the page from loading the model. Uploads still need the secret keys.
+
+## Sending detections (#42, #43)
+
+After each model run, `reporter.js` checks for a `pothole` box. If there is one, the
+phone has a GPS fix (less than 30 s old, within 100 m), and nothing was sent in the
+last second, it:
+
+1. saves the frame as a JPEG (max 1280 px wide, quality 0.8, usually under 200 KB),
+2. `POST /api/upload?name=<id>.jpg` with the JPEG, gets back `image_url`,
+3. `POST /api/detections` with `source: "live"`, `verdict: "unverified"`, GPS, the
+   score, and the box in the JPEG's pixels.
+
+The stats box shows GPS accuracy, how many were sent, and the last result. If the API
+is not live yet, it says so and the camera keeps running.
+
+The stock model has no `pothole` class, so it sends nothing. To try the flow anyway,
+without touching the team database: `/live?dry&sendlabel=person`.
+
+The API only puts a new pin on the map after a verified sighting or a 2nd sighting
+within 50 m (contract v3). Live sightings are unverified, so the first one near a
+place with no city report will not show; the second one will.
 
 ## Speed results (#38)
 
