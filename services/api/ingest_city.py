@@ -269,9 +269,11 @@ def main():
           state = EXCLUDED.state, last_seen_at = EXCLUDED.last_seen_at, updated_at = now()""",
         [json.dumps(rows)])
 
-    counts = {}
-    for r in rows:
-        counts[r["state"]] = counts.get(r["state"], 0) + 1
+    # The API's state rule lives in SQL (recompute_pothole() in schema.sql). Re-run it so
+    # the ingest and POST /api/detections never disagree about a pothole's state.
+    sql(url, "SELECT recompute_pothole(pothole_id) FROM potholes")
+    counts = {r["state"]: int(r["n"]) for r in
+              sql(url, "SELECT state, count(*) AS n FROM potholes GROUP BY state")}
     print(f"wrote {len(reports)} city_reports, {len(rows)} potholes; states: {counts}")
 
 
