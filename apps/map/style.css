@@ -33,16 +33,18 @@ body { display: grid; grid-template-columns: 1fr var(--side); grid-template-rows
 .brand::before { content: ""; display: inline-block; width: 24px; height: 4px; margin: 0 12px 4px 0; background: var(--paint); vertical-align: middle; }
 /* Top bar: what it is, then the totals on the right, then live or sample data. */
 .tagline { margin: 0; padding-left: 24px; border-left: 1px solid rgba(237, 237, 237, 0.14); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.totals { display: flex; gap: 32px; margin: 0 0 0 auto; flex-shrink: 0; }
-.totals div { display: flex; flex-direction: column; }
-.totals dt { font-size: 13px; }
-.totals dd { margin: 0; font: 500 22px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
+.totals { display: flex; align-items: baseline; gap: 24px; margin: 0 0 0 auto; flex-shrink: 0; }
+/* Number and label on one line, e.g. "6 city reports". */
+.totals div { display: flex; align-items: baseline; gap: 8px; }
+.totals dt { font-size: 15px; white-space: nowrap; }
+.totals dd { margin: 0; font: 500 22px/1 var(--mono); font-variant-numeric: tabular-nums; }
 .totals .still dd, .totals .still dt { color: var(--paint); }
 .totals .still dd { font-weight: 600; }
-.source { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 0; border-radius: 8px; font-size: 14px; white-space: nowrap; }
-.source::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--reported); }
+/* Live or sample data: a quiet tag after a divider, green dot when live. Not yellow, so
+   the only yellow up here is "still there". */
+.source { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 0; padding-left: 24px; border-left: 1px solid rgba(237, 237, 237, 0.14); font-size: 14px; line-height: 24px; white-space: nowrap; }
+.source::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #8e8e94; }
 .source.live::before { background: var(--fixed); }
-.source.sample { color: var(--paint); }
 
 /* Small copy of the map pin, in the legend, list rows and status tag. */
 .dot { display: inline-block; flex-shrink: 0; vertical-align: middle; }
