@@ -2,34 +2,42 @@
 //
 // Flow:
 //   1. User taps "Start camera" (browsers require a tap before using the camera).
-//   2. We load the model and open the camera at the same time.
-//   3. Every screen refresh we draw the newest camera frame plus the latest boxes.
-//   4. Separately, whenever the model is free, we give it the newest frame.
+//   2. We open the camera first and show it right away.
+//   3. Then we load the model, with a message on top of the camera picture. On a
+//      phone this can take a while (about 22 MB to download on WASM).
+//   4. Every screen refresh we draw the newest camera frame plus the latest boxes.
+//   5. Separately, whenever the model is free, we give it the newest frame.
 //      The model is slower than the screen, so the picture stays smooth and the
 //      boxes update as fast as the model allows.
-//
-// Not done here yet (separate board tasks):
-//   #42 GPS + one detection per second, #43 upload frame and POST /api/detections.
-//   The place to hook those in is marked "NEXT" below.
+//   6. After each model run, reporter.js sends a pothole (if any) to the API with
+//      GPS, at most once per second (#42, #43).
 
-import { Detector } from "./detector.js";
-import { BACKEND } from "./config.js";
+import { Detector, EngineFailed } from "./detector.js";
+import { Reporter } from "./reporter.js";
+import { BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend } from "./config.js";
 
 const view = document.getElementById("view");
 const ctx = view.getContext("2d");
 const startScreen = document.getElementById("start-screen");
 const startButton = document.getElementById("start");
 const statusText = document.getElementById("status");
+const banner = document.getElementById("banner");
 const stats = {
   panel: document.getElementById("stats"),
   backend: document.getElementById("stat-backend"),
   ms: document.getElementById("stat-ms"),
   fps: document.getElementById("stat-fps"),
   count: document.getElementById("stat-count"),
+  gps: document.getElementById("stat-gps"),
+  sent: document.getElementById("stat-sent"),
+  message: document.getElementById("stat-message"),
 };
 
 const detector = new Detector();
-const video = document.createElement("video");
+const reporter = new Reporter(showReporterState);
+// The <video> is on the page but invisible. iPhone Safari can give blank frames from a
+// video that is not on the page. We draw its frames onto the canvas ourselves.
+const video = document.getElementById("camera");
 video.playsInline = true; // needed on iPhone, or the video opens full screen
 video.muted = true;
 
@@ -45,26 +53,67 @@ document.getElementById("switch-camera").addEventListener("click", flipCamera);
 
 async function start() {
   startButton.disabled = true;
+
+  // Step 1: the camera. Done first, straight after the tap, because iPhone Safari is
+  // strict about only asking for the camera right after the user taps something.
   try {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("This browser cannot use the camera here. The page must be opened over https (or on localhost).");
     }
-    // Load the model and open the camera in parallel to save time.
-    await Promise.all([
-      detector.load(setStatus),
-      openCamera(),
-    ]);
-    stats.backend.textContent = detector.backend;
-    console.info(`[live] model ready on ${detector.backend} in ${Math.round(detector.loadMs)} ms`);
-
-    startScreen.hidden = true;
-    stats.panel.hidden = false;
-    requestAnimationFrame(drawLoop);
+    say("Opening camera...");
+    await openCamera();
   } catch (err) {
-    console.error("[live]", err);
-    setStatus(err.message || String(err));
+    console.error("[live] camera failed:", err);
+    say(cameraProblem(err));
     startButton.disabled = false;
+    return;
   }
+
+  // The camera works: show it now, and load the model on top of it.
+  // Ask for location now too, while we are still close to the tap.
+  reporter.startGps();
+
+  startScreen.hidden = true;
+  banner.hidden = false;
+  requestAnimationFrame(drawLoop);
+
+  // Step 2: the model.
+  try {
+    await detector.load(say);
+    stats.backend.textContent = detector.backend;
+    stats.panel.hidden = false;
+    banner.hidden = true;
+    // WebGPU was picked by hand and it worked: stop forcing WASM on this phone.
+    if (BACKEND_FROM_URL === "webgpu") rememberBackend(null);
+    console.info(`[live] model ready on ${detector.backend} in ${Math.round(detector.loadMs)} ms`);
+  } catch (err) {
+    console.error("[live] model failed:", err);
+
+    // WebGPU failed and nobody forced it in the URL: remember to use WASM on this
+    // phone and reload. A reload is needed because a stuck WebGPU run keeps holding
+    // the runtime, so WASM cannot start in this same page.
+    if (err instanceof EngineFailed && err.backend === "webgpu" && !BACKEND_FROM_URL) {
+      say("WebGPU does not work on this phone. Switching to WASM...");
+      rememberBackend("wasm");
+      setTimeout(() => window.location.reload(), 1000);
+      return;
+    }
+    say(`Model did not load: ${err.message || err}`);
+  }
+}
+
+// Turn a camera error into something a person can act on.
+function cameraProblem(err) {
+  if (err?.name === "NotAllowedError") {
+    return "Camera access was blocked. On iPhone: tap \"aA\" in the address bar, then Website Settings, then Camera: Allow. Then reload this page.";
+  }
+  if (err?.name === "NotFoundError" || err?.name === "OverconstrainedError") {
+    return "No camera found on this device.";
+  }
+  if (err?.name === "NotReadableError") {
+    return "The camera is busy. Close other apps or tabs using it and try again.";
+  }
+  return `Camera did not start: ${err?.message || err}`;
 }
 
 // Open the camera. On a phone we ask for the back camera; on a laptop the browser
@@ -98,8 +147,8 @@ function drawLoop() {
     ctx.drawImage(video, 0, 0, w, h);
     drawBoxes(latestBoxes);
 
-    // Give the model a new frame only if it finished the last one.
-    if (!modelBusy) runModel(w, h);
+    // Give the model a new frame once it has loaded and finished the last one.
+    if (detector.session && !modelBusy) runModel(w, h);
   }
   requestAnimationFrame(drawLoop);
 }
@@ -112,9 +161,8 @@ async function runModel(w, h) {
     recordSpeed(ms);
     stats.count.textContent = String(boxes.length);
 
-    // NEXT (#42, #43): if a pothole is in `boxes`, and it has been at least 1 second
-    // since the last one we sent, read GPS, save the frame as a JPEG, upload it, and
-    // POST the detection.
+    // Send a pothole to the API if there is one (reporter.js decides if it is time).
+    reporter.maybeSend(boxes, video, w, h);
   } catch (err) {
     console.error("[live] model run failed:", err);
   } finally {
@@ -180,9 +228,34 @@ async function flipCamera() {
   }
 }
 
-function setStatus(text) {
-  statusText.textContent = text;
+// Update the GPS / sent lines in the stats box.
+function showReporterState({ gps, sent, message }) {
+  stats.gps.textContent = gps;
+  stats.sent.textContent = String(sent);
+  stats.message.textContent = message;
+  stats.message.hidden = !message;
 }
 
-// Show which engine was requested, before anything loads.
-if (BACKEND !== "auto") setStatus(`Engine forced to ${BACKEND} by the URL.`);
+// Show a message on the start screen and on top of the camera picture.
+function say(text) {
+  statusText.textContent = text;
+  banner.textContent = text;
+}
+
+// Show any error we did not expect on screen, since a phone has no console to check.
+window.addEventListener("error", (e) => showUnexpected(e.message));
+window.addEventListener("unhandledrejection", (e) => showUnexpected(e.reason?.message || e.reason));
+function showUnexpected(message) {
+  say(`Error: ${message}`);
+  if (startScreen.hidden) banner.hidden = false;
+}
+
+// Show which engine will be used, before anything loads.
+if (BACKEND_FROM_URL) {
+  say(`Engine set to ${BACKEND_FROM_URL} by the URL.`);
+} else if (REMEMBERED_BACKEND === "wasm") {
+  say("Using WASM on this phone (WebGPU did not work here before). Tap Start camera.");
+}
+
+// Tell the small check in index.html that this script loaded.
+window.liveReady = true;

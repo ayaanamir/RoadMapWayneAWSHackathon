@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Still There · Detroit potholes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
+  <link rel="stylesheet" href="/apps/map/style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">Still There</div>
+    <div class="summary" id="summary">Loading city reports</div>
+    <ul class="legend" aria-label="Legend">
+      <li><span class="dot still_there"></span>Still there after closing</li>
+      <li><span class="dot unreported"></span>Never reported</li>
+      <li><span class="dot fixed_confirmed"></span>Fixed</li>
+      <li><span class="dot reported_only"></span>Not checked yet</li>
+    </ul>
+  </header>
+  <main class="layout">
+    <div id="map" aria-label="Map of pothole reports"></div>
+    <aside class="panel" id="panel" aria-live="polite">
+      <div class="empty">
+        <p class="empty-title">Pick a pin</p>
+        <p class="muted">Every pin is a pothole the city has on file in Corktown, Midtown and Southwest Detroit. Yellow ones are still there after the city marked them fixed.</p>
+      </div>
+    </aside>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
+  <script src="/api/config"></script>
+  <script src="/apps/map/app.js"></script>
+</body>
+</html>
