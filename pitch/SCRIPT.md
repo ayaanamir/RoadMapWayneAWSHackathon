@@ -35,7 +35,8 @@ _Map on the projector. Peterboro pin is yellow. Click path: `DEMO.md`._
 > We drove [fill: number] of these sites this afternoon. [fill: X] were still there.
 >
 > _Phone in hand, point it at a pothole photo on the laptop._
-> And anyone can add to it. This is a phone in a web page, no app to install.
+> The real product is a small dash cam on cars that already drive every street.
+> We had 24 hours, so today the phone is our dash cam: a web page, nothing to install.
 > It spots the pothole and grabs the location. Before it goes on the map, the vision model
 > checks the photo, so a shadow never makes a pin. _(pin appears)_ There it is on the map.
 
@@ -46,7 +47,7 @@ _Map on the projector. Peterboro pin is yellow. Click path: `DEMO.md`._
 > One: we pull every pothole report from Improve Detroit, the city's own public data,
 > and group reports that are the same spot.
 >
-> Two: we look at the road. A small detection model runs right on the phone, so it keeps
+> Two: we look at the road. A small detection model runs right on the camera, so it keeps
 > up with a moving car and works on a weak signal.
 >
 > Three: a bigger vision model double checks every hit, from the car and from the phone.
@@ -68,8 +69,8 @@ _Map on the projector. Peterboro pin is yellow. Click path: `DEMO.md`._
 
 ## 6. Close (about 15 s)
 
-> Every closed ticket in Detroit could get a second look, from anyone with a phone,
-> or from a city vehicle that is already driving the route.
+> Put this dash cam on the buses and garbage trucks that already drive every street,
+> and every closed ticket in Detroit gets a second look, without anyone going out to check.
 >
 > The city closes pothole reports in days. We are the ones who check.
 

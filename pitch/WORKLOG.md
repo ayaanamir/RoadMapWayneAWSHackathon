@@ -57,3 +57,9 @@ Next in this area: #49 `DEMO.md`, best done once the map (#15 to #18) exists.
   to expect (white ring at Newlab, yellow only next to a closed city report), new
   rehearsal check that a photo on a screen gets "pothole", new fallback line.
 - `SCRIPT.md`: the phone line and step 3 now say the vision model checks phone sightings too.
+
+## Dash cam framing (branch pitch/dashcam-framing)
+
+- Pitch the product as a dash cam on vehicles that already drive every street. The phone
+  is our dash cam for the 24 hours. Changed the phone line, step two and the close in
+  `SCRIPT.md`, and the phone bullet and "What's next" in `SUBMISSION.md`.

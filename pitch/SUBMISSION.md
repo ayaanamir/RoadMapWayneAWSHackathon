@@ -49,8 +49,10 @@ On November 14 we drove past it: [fill: what we saw].
   with one sentence on why.
 - **Pins change color** when we see a pothole after the city closed it ("still there"),
   or confirm it is patched ("fixed").
-- **Anyone can add sightings from a phone.** A web page, nothing to install: it runs the
-  detector on the phone, and sends the frame and GPS when it sees a pothole.
+- **A live dash cam, built in 24 hours from a phone.** The product is a small dash cam on
+  vehicles that already drive every street. For the hackathon the phone is that dash
+  cam: a web page, nothing to install. It runs the detector on the phone, and sends the
+  frame and GPS when it sees a pothole.
 
 ### How we built it
 
@@ -76,8 +78,9 @@ On November 14 we drove past it: [fill: what we saw].
 
 ### What's next
 
-- Put it on vehicles that already drive every street (buses, garbage trucks) so every
-  closed ticket gets checked automatically.
+- Our own dash cam unit (camera plus a small computer running the same model) on vehicles
+  that already drive every street (buses, garbage trucks), so every closed ticket gets
+  checked automatically.
 - A one-tap "report again" with our photo as evidence, sent to Improve Detroit.
 
 ## Built with
