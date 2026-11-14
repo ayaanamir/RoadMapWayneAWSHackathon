@@ -4,6 +4,21 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · Status box cleanup, icon buttons, loading box (Ado + Claude)
+
+Branch: `live/icons-and-loader`.
+
+- Status box: removed the grey speed line and the divider under the header. Speed now
+  sits in the engine button's tooltip and the console.
+- "Flip camera" and "Switch engine" are now square icon buttons (Lucide
+  "switch-camera" and "cpu", inline SVG, ISC license).
+- Last result is one short line, no grey box: "Would send pothole 87%", "Sent, on the
+  map", "Pothole seen, waiting for GPS".
+- Loading box (shown while the camera first starts): plain steps ("Starting the
+  detector", "Downloading the pothole model", "Getting ready") and a yellow bar that
+  fills with the real download progress.
+- Checked locally with a fake camera: bar goes 5% to 90% in about 70 steps, then hides.
+
 ## 2026-11-14 · Status box and start screen restyled (Ado + Claude)
 
 Branch: `live/stats-box-polish`.
@@ -166,3 +181,29 @@ Left for the human: open the page on each phone and fill the speed table in `REA
 
 Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on the API
 (#4, #10, #11 by Ayaan). #39 waits on `best.pt` from Muq (#58).
+
+## Smoother camera, Geist font, Practice tag (branch live/smooth-camera)
+
+- The page now shows the camera `<video>` directly. Before, it copied every frame onto
+  a canvas by hand, 60 times a second, on the same thread as the model. That is what
+  made the picture stutter on the phone.
+- The canvas is now a clear layer on top with only the boxes, redrawn once per model
+  run. Same size and "contain" fit as the video, so boxes still line up (checked).
+- The model runs one frame at a time and waits one screen refresh between runs, so
+  the phone can draw the camera and handle taps in between.
+- Camera asks for 30 frames per second.
+- Model input: the 4.9 MB array and tensor are made once and reused, instead of a new
+  one every frame.
+- Font: Geist and Geist Mono. "Practice" / "Sending" is now an outlined tag with a
+  dot (gray for Practice, yellow for Sending).
+- To check on the iPhone: is the camera smooth, and is model speed the same or better.
+
+## Shorter status messages (branch live/short-messages)
+
+- Removed "Ready" under the start button and the border on the Practice/Sending tag.
+- Status box messages are now a few words: "Practice mode", "Waiting for GPS",
+  "Would send, 87%", "On the map", "Sent, needs 2nd sighting",
+  "Not sent: no connection / server offline / server error 500 / photo failed".
+- GPS row: "Blocked", "No signal", "Not available" instead of full sentences.
+- Color only where it matters: green = sent, amber = waiting for GPS or GPS too rough,
+  red = not sent or location blocked, gray = practice. Everything else stays white.

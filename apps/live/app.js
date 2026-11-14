@@ -5,10 +5,10 @@
 //   2. We open the camera first and show it right away.
 //   3. Then we load the model, with a message on top of the camera picture. On a
 //      phone this can take a while (about 22 MB to download on WASM).
-//   4. Every screen refresh we draw the newest camera frame plus the latest boxes.
-//   5. Separately, whenever the model is free, we give it the newest frame.
-//      The model is slower than the screen, so the picture stays smooth and the
-//      boxes update as fast as the model allows.
+//   4. The phone shows the camera <video> itself, which keeps it smooth. We do not
+//      copy frames by hand. A clear canvas on top holds only the boxes.
+//   5. Whenever the model is free, we give it the newest frame, then redraw the
+//      boxes. Between runs we wait one screen refresh, so the page never freezes.
 //   6. After each model run, reporter.js sends a pothole (if any) to the API with
 //      GPS, at most once per second (#42, #43).
 
@@ -22,13 +22,14 @@ const startScreen = document.getElementById("start-screen");
 const startButton = document.getElementById("start");
 const statusText = document.getElementById("status");
 const banner = document.getElementById("banner");
+const bannerText = document.getElementById("banner-text");
+const bannerProgress = document.getElementById("banner-progress");
+const bannerBar = document.getElementById("banner-bar");
+const engineButton = document.getElementById("switch-backend");
 const stats = {
   panel: document.getElementById("stats"),
   model: document.getElementById("stat-model"),
   mode: document.getElementById("stat-mode"),
-  backend: document.getElementById("stat-backend"),
-  ms: document.getElementById("stat-ms"),
-  fps: document.getElementById("stat-fps"),
   count: document.getElementById("stat-count"),
   gps: document.getElementById("stat-gps"),
   sent: document.getElementById("stat-sent"),
@@ -37,15 +38,13 @@ const stats = {
 
 const detector = new Detector();
 const reporter = new Reporter(showReporterState);
-// The <video> is on the page but invisible. iPhone Safari can give blank frames from a
-// video that is not on the page. We draw its frames onto the canvas ourselves.
+// The camera picture. The canvas "view" sits on top of it and only has the boxes.
 const video = document.getElementById("camera");
 video.playsInline = true; // needed on iPhone, or the video opens full screen
 video.muted = true;
 
 let facing = "environment"; // "environment" = back camera, "user" = front camera
-let latestBoxes = [];
-let modelBusy = false;
+let modelLoopRunning = false;
 const recentMs = [];          // last few model run times, for the average
 const recentRunTimes = [];    // when the last few runs finished, for checks/second
 
@@ -62,7 +61,7 @@ async function start() {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("This browser cannot use the camera here. The page must be opened over https (or on localhost).");
     }
-    say("Opening camera...");
+    say("Opening camera");
     await openCamera();
   } catch (err) {
     console.error("[live] camera failed:", err);
@@ -76,13 +75,12 @@ async function start() {
   reporter.startGps();
 
   startScreen.hidden = true;
+  say("Starting the detector", 0);
   banner.hidden = false;
-  requestAnimationFrame(drawLoop);
 
   // Step 2: the model.
   try {
     await detector.load(say);
-    stats.backend.textContent = detector.backend;
     const { name, sending } = modelInfo();
     stats.model.textContent = name;
     stats.mode.textContent = sending ? "Sending" : "Practice";
@@ -91,6 +89,7 @@ async function start() {
     banner.hidden = true;
     // WebGPU was picked by hand and it worked: stop forcing WASM on this phone.
     if (BACKEND_FROM_URL === "webgpu") rememberBackend(null);
+    startModelLoop();
     console.info(`[live] model ready on ${detector.backend} in ${Math.round(detector.loadMs)} ms`);
   } catch (err) {
     console.error("[live] model failed:", err);
@@ -134,53 +133,56 @@ async function openCamera() {
       facingMode: { ideal: facing },
       width: { ideal: 1280 },
       height: { ideal: 720 },
+      frameRate: { ideal: 30 }, // steady 30 per second; more only heats the phone
     },
   });
   video.srcObject = stream;
   await video.play();
 }
 
-// Runs once per screen refresh.
-function drawLoop() {
+// Run the model again and again, one frame at a time, for as long as the page is open.
+function startModelLoop() {
+  if (modelLoopRunning) return;
+  modelLoopRunning = true;
+  requestAnimationFrame(modelStep);
+}
+
+async function modelStep() {
   const w = video.videoWidth;
   const h = video.videoHeight;
-  if (w && h) {
-    // Match the canvas to the camera's real size so boxes are in the same pixels.
-    if (view.width !== w || view.height !== h) {
-      view.width = w;
-      view.height = h;
+  if (w && h && !video.paused) {
+    try {
+      const { boxes, ms } = await detector.detect(video, w, h);
+      drawBoxes(boxes, w, h);
+      recordSpeed(ms);
+      stats.count.textContent = String(boxes.length);
+
+      // Send a pothole to the API if there is one (reporter.js decides if it is time).
+      reporter.maybeSend(boxes, video, w, h);
+    } catch (err) {
+      console.error("[live] model run failed:", err);
     }
-    ctx.drawImage(video, 0, 0, w, h);
-    drawBoxes(latestBoxes);
-
-    // Give the model a new frame once it has loaded and finished the last one.
-    if (detector.session && !modelBusy) runModel(w, h);
   }
-  requestAnimationFrame(drawLoop);
+  // Wait for the next screen refresh before the next run. This gives the phone a
+  // moment to draw the camera and handle taps, so nothing stutters.
+  requestAnimationFrame(modelStep);
 }
 
-async function runModel(w, h) {
-  modelBusy = true;
-  try {
-    const { boxes, ms } = await detector.detect(video, w, h);
-    latestBoxes = boxes;
-    recordSpeed(ms);
-    stats.count.textContent = String(boxes.length);
-
-    // Send a pothole to the API if there is one (reporter.js decides if it is time).
-    reporter.maybeSend(boxes, video, w, h);
-  } catch (err) {
-    console.error("[live] model run failed:", err);
-  } finally {
-    modelBusy = false;
+// Clear the box layer and draw the newest boxes. Only runs after a model run, not
+// every screen refresh. w and h are the camera size, which the boxes are measured in.
+function drawBoxes(boxes, w, h) {
+  // Same size as the camera picture, so a box at (x, y) lands on the same spot.
+  if (view.width !== w || view.height !== h) {
+    view.width = w;
+    view.height = h;
+  } else {
+    ctx.clearRect(0, 0, w, h);
   }
-}
 
-function drawBoxes(boxes) {
   const line = Math.max(2, Math.round(view.width / 320));
   const fontSize = Math.max(14, Math.round(view.width / 45));
   ctx.lineWidth = line;
-  ctx.font = `500 ${fontSize}px "IBM Plex Mono", ui-monospace, monospace`;
+  ctx.font = `500 ${fontSize}px "Geist Mono", ui-monospace, monospace`;
   ctx.textBaseline = "top";
 
   for (const b of boxes) {
@@ -208,13 +210,15 @@ function recordSpeed(ms) {
   if (recentMs.length > 30) recentMs.shift();
   if (recentRunTimes.length > 30) recentRunTimes.shift();
 
+  // Speed is not shown on screen any more. It sits in the engine button's tooltip
+  // (long-press or hover) and the console, for comparing phones.
   const avgMs = recentMs.reduce((a, b) => a + b, 0) / recentMs.length;
-  stats.ms.textContent = avgMs.toFixed(0);
-
+  let perSecond = 0;
   if (recentRunTimes.length > 1) {
     const seconds = (now - recentRunTimes[0]) / 1000;
-    stats.fps.textContent = ((recentRunTimes.length - 1) / seconds).toFixed(1);
+    perSecond = (recentRunTimes.length - 1) / seconds;
   }
+  engineButton.title = `Switch engine (now ${detector.backend}, ${avgMs.toFixed(0)} ms, ${perSecond.toFixed(1)} per s)`;
 }
 
 // Reload the page using the other engine, to compare speed on the same phone.
@@ -245,17 +249,23 @@ function modelInfo() {
 }
 
 // Update the GPS / sent lines in the stats box.
-function showReporterState({ gps, sent, message }) {
+function showReporterState({ gps, gpsTone, sent, message, messageTone }) {
   stats.gps.textContent = gps;
+  stats.gps.dataset.tone = gpsTone;
   stats.sent.textContent = String(sent);
   stats.message.textContent = message;
+  stats.message.dataset.tone = messageTone;
   stats.message.hidden = !message;
 }
 
 // Show a message on the start screen and on top of the camera picture.
-function say(text) {
+// `progress` (0 to 1) fills the yellow bar; leave it out to hide the bar (errors).
+function say(text, progress) {
   statusText.textContent = text;
-  banner.textContent = text;
+  bannerText.textContent = text;
+  const hasBar = typeof progress === "number";
+  bannerProgress.hidden = !hasBar;
+  if (hasBar) bannerBar.style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
 }
 
 // Show any error we did not expect on screen, since a phone has no console to check.
