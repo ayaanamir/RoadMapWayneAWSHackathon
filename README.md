@@ -11,9 +11,9 @@ Fill in your GitHub handle. One owner per area — see `AGENTS.md` for the rules
 
 | Role | Person | GitHub | Areas you write in |
 |---|---|---|---|
-| Backbone | | | `services/api/`, `apps/map/` |
-| Footage | | | `pipeline/` |
-| Live + pitch | | | `apps/live/`, `pitch/` |
+| Backbone | Ayaan | @ayaanamir | `services/api/`, `apps/map/` |
+| Footage | Teammate 1 (stronger in Python) | | `pipeline/` |
+| Live + pitch | Teammate 2 (stronger in web/JS) | | `apps/live/`, `pitch/` |
 
 ## Layout
 
