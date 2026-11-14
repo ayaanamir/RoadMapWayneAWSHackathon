@@ -1,14 +1,38 @@
 // Map + timeline demo screen (#15-#18, #21). Same-origin API, fixture fallback.
 const NEWLAB = [42.3337, -83.0727];
 const POLL_MS = 5000;
-const STYLE = {
-  still_there:     { color: '#f2c230', fillColor: '#f2c230', fillOpacity: 1, weight: 0, radius: 9 },
-  unreported:      { color: '#ededed', fillColor: '#141415', fillOpacity: 1, weight: 3, radius: 8 },
-  fixed_confirmed: { color: '#4cc38a', fillColor: '#4cc38a', fillOpacity: 1, weight: 0, radius: 7 },
-  // Gray pins get a dark edge so they stand out from the dark streets.
-  reported_only:   { color: '#0f0f10', fillColor: '#8e8e94', fillOpacity: 1, weight: 1.5, radius: 6 },
-  unknown:         { color: '#0f0f10', fillColor: '#8e8e94', fillOpacity: 1, weight: 1.5, radius: 6 },
+// Map pins. Each state has its own shape and symbol, so a pin reads without the legend
+// (and without relying on color alone):
+//   still there      yellow badge with "!", the biggest: the thing we want you to see
+//   not reported     dark badge, white ring, camera symbol: our camera found it
+//   fixed            green badge with a check mark
+//   not checked yet  small plain gray dot, so the many city-only spots stay quiet
+const PIN = {
+  still_there: { size: 28, svg: '<circle cx="14" cy="14" r="12" fill="#f2c230" stroke="#0f0f10" stroke-width="2"/><path d="M14 8v7" stroke="#141415" stroke-width="2.6" stroke-linecap="round"/><circle cx="14" cy="19.5" r="1.6" fill="#141415"/>' },
+  // Camera: just the Lucide camera outline, no disc or ring.
+  unreported: { size: 26, svg: '<g transform="translate(1 1)" fill="none" stroke="#ededed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></g>' },
+  fixed_confirmed: { size: 24, svg: '<circle cx="12" cy="12" r="11" fill="#4cc38a"/><path d="m8 12.3 2.7 2.7L16 9.6" fill="none" stroke="#0f0f10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' },
+  reported_only: { size: 14, svg: '<circle cx="7" cy="7" r="5.5" fill="#8e8e94" stroke="#0f0f10" stroke-width="1.5"/>' },
 };
+PIN.unknown = PIN.reported_only;
+
+// The pin symbol as an <svg>, drawn `px` wide. Used on the map, in the legend, the list
+// and the empty state, so a state looks the same everywhere.
+function pinSvg(state, px, cls = '') {
+  const pin = PIN[state] || PIN.unknown;
+  return `<svg class="${cls}" viewBox="0 0 ${pin.size} ${pin.size}" width="${px}" height="${px}" aria-hidden="true">${pin.svg}</svg>`;
+}
+
+function pinIcon(state, selected) {
+  const pin = PIN[state] || PIN.unknown;
+  return L.divIcon({
+    className: `pin pin-${state}${selected ? ' selected' : ''}`,
+    html: pinSvg(state, pin.size),
+    iconSize: [pin.size, pin.size],
+    iconAnchor: [pin.size / 2, pin.size / 2],
+  });
+}
+
 // Same wording as the evidence report (report.js), so a state reads the same everywhere.
 const LABEL = {
   still_there: 'Still there after closing',
@@ -76,17 +100,20 @@ function draw() {
   // Important pins drawn last so they sit on top.
   for (const p of [...potholes].sort((a, b) => order(a) - order(b))) {
     seen.add(p.pothole_id);
-    const style = STYLE[p.state] || STYLE.unknown;
+    const look = `${p.state}|${p.pothole_id === selectedId}`;
     let m = markers.get(p.pothole_id);
     if (!m) {
-      m = L.circleMarker([p.lat, p.lon], style).addTo(layer);
+      m = L.marker([p.lat, p.lon], { icon: pinIcon(p.state, p.pothole_id === selectedId), keyboard: false }).addTo(layer);
       m.on('click', () => select(p.pothole_id));
-      m.bindTooltip(() => esc(byId(p.pothole_id)?.address || ''), { direction: 'top', offset: [0, -8] });
+      m.bindTooltip(() => esc(byId(p.pothole_id)?.address || ''), { direction: 'top', offset: [0, -12] });
       markers.set(p.pothole_id, m);
     } else {
-      m.setLatLng([p.lat, p.lon]).setStyle(style).setRadius(style.radius);
+      m.setLatLng([p.lat, p.lon]);
+      if (m.look !== look) m.setIcon(pinIcon(p.state, p.pothole_id === selectedId));
     }
-    if (order(p) > 0) m.bringToFront();
+    m.look = look;
+    // Important pins on top of the gray ones; the picked pin on top of everything.
+    m.setZIndexOffset(p.pothole_id === selectedId ? 1000 : order(p) * 100);
   }
   for (const [id, m] of markers) if (!seen.has(id)) { layer.removeLayer(m); markers.delete(id); }
 
@@ -137,8 +164,6 @@ function setPanel(html) {
   panel.scrollTop = scroll;
 }
 
-// A ring around the picked pin, so you can see where you are on the map.
-const ring = L.circleMarker(NEWLAB, { radius: 15, color: '#ededed', weight: 2, fill: false, interactive: false });
 
 function select(id, pan = true) {
   const p = byId(id);
@@ -146,7 +171,7 @@ function select(id, pan = true) {
   const changed = selectedId !== id;
   selectedId = id;
   history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
-  ring.setLatLng([p.lat, p.lon]).addTo(map);
+  draw(); // redraw pins so the picked one gets its ring
   if (pan) map.setView([p.lat, p.lon], Math.max(map.getZoom(), 16));
   if (changed) { lastPanelHtml = ''; panel.scrollTop = 0; }
   renderSpot(p);
@@ -155,7 +180,7 @@ function select(id, pan = true) {
 function showList() {
   selectedId = null;
   history.replaceState(null, '', location.pathname);
-  map.removeLayer(ring);
+  draw(); // drop the ring from the pin that was picked
   lastPanelHtml = '';
   panel.scrollTop = 0;
   renderList();
@@ -201,7 +226,7 @@ function renderList() {
     <!-- Legend: what each pin color means, with counts. Click one to show only those. -->
     <div class="legend" role="group" aria-label="Pin colors">
       ${LEGEND.map(([state, name]) => `<button type="button" class="chip" data-state="${state}" aria-pressed="${filter === state}">
-        <span class="dot ${state}"></span>${name}<b>${countState(state)}</b></button>`).join('')}
+        ${pinSvg(state, 16, 'dot')}${name}<b>${countState(state)}</b></button>`).join('')}
     </div>
     <header class="panel-head">
       <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
@@ -210,7 +235,7 @@ function renderList() {
     <ul class="spots">
       ${rows.map(({ p, f }) => `
         <li><button type="button" class="spot-row" data-id="${esc(p.pothole_id)}">
-          <span class="dot ${esc(p.state)}"></span>
+          ${pinSvg(stateOf(p), 16, 'dot')}
           <span class="spot-text">
             <span class="spot-name">${esc(p.address || 'Unnamed spot')}</span>
             <span class="spot-line">${esc(listLine(p, f))}</span>
@@ -257,7 +282,7 @@ function renderSpot(p) {
     <button type="button" class="back" id="back">← All spots</button>
     <header class="spot-head">
       <h1 class="place">${esc(p.address || 'Unnamed spot')}</h1>
-      <p class="status ${esc(p.state)}"><span class="dot ${esc(p.state)}"></span>${esc(LABEL[p.state] || p.state)}</p>
+      <p class="status ${esc(p.state)}">${pinSvg(stateOf(p), 16, 'dot')}${esc(LABEL[p.state] || p.state)}</p>
     </header>
 
     <dl class="stats n${stats.length}">
