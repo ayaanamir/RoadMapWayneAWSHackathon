@@ -181,3 +181,19 @@ Left for the human: open the page on each phone and fill the speed table in `REA
 
 Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on the API
 (#4, #10, #11 by Ayaan). #39 waits on `best.pt` from Muq (#58).
+
+## Smoother camera, Geist font, Practice tag (branch live/smooth-camera)
+
+- The page now shows the camera `<video>` directly. Before, it copied every frame onto
+  a canvas by hand, 60 times a second, on the same thread as the model. That is what
+  made the picture stutter on the phone.
+- The canvas is now a clear layer on top with only the boxes, redrawn once per model
+  run. Same size and "contain" fit as the video, so boxes still line up (checked).
+- The model runs one frame at a time and waits one screen refresh between runs, so
+  the phone can draw the camera and handle taps in between.
+- Camera asks for 30 frames per second.
+- Model input: the 4.9 MB array and tensor are made once and reused, instead of a new
+  one every frame.
+- Font: Geist and Geist Mono. "Practice" / "Sending" is now an outlined tag with a
+  dot (gray for Practice, yellow for Sending).
+- To check on the iPhone: is the camera smooth, and is model speed the same or better.

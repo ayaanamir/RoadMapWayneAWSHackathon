@@ -110,15 +110,23 @@ export class Detector {
     // The model wants all reds, then all greens, then all blues, with values 0 to 1.
     const pixels = this.ctx.getImageData(0, 0, size, size).data;
     const area = size * size;
-    const data = new Float32Array(3 * area);
-    for (let i = 0; i < area; i++) {
-      data[i] = pixels[i * 4] / 255;                 // red
-      data[i + area] = pixels[i * 4 + 1] / 255;      // green
-      data[i + 2 * area] = pixels[i * 4 + 2] / 255;  // blue
+
+    // Make the input array and tensor once and reuse them for every frame. Making a
+    // new 4.9 MB array 10 times a second keeps the phone busy cleaning up memory.
+    // Safe because the model finishes one frame before the next one is prepared.
+    if (!this.inputData) {
+      this.inputData = new Float32Array(3 * area);
+      this.inputTensor = new ort.Tensor("float32", this.inputData, [1, 3, size, size]);
+    }
+    const data = this.inputData;
+    const toUnit = 1 / 255; // multiplying is cheaper than dividing, 400,000 times a frame
+    for (let i = 0, p = 0; i < area; i++, p += 4) {
+      data[i] = pixels[p] * toUnit;                 // red
+      data[i + area] = pixels[p + 1] * toUnit;      // green
+      data[i + 2 * area] = pixels[p + 2] * toUnit;  // blue
     }
 
-    const input = new ort.Tensor("float32", data, [1, 3, size, size]);
-    return { input, fit: { scale, padX, padY, srcW, srcH } };
+    return { input: this.inputTensor, fit: { scale, padX, padY, srcW, srcH } };
   }
 
   // Step 3: turn raw model output into a clean list of boxes.

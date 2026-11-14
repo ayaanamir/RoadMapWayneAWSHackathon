@@ -1,6 +1,6 @@
 /* Full-screen camera page.
    Same direction as the map (apps/map/style.css): blunt, civic, exact. Asphalt at night,
-   graphite neutrals, one accent: road-paint yellow. IBM Plex. Every size on a 4px grid. */
+   graphite neutrals, one accent: road-paint yellow. Geist. Every size on a 4px grid. */
 
 :root {
   --bg-deep: #0f0f10;
@@ -12,8 +12,8 @@
   --muted: #85858b;
   --paint: #f2c230;                     /* road-paint yellow: boxes, "Sending" */
   --panel: rgba(15, 15, 16, 0.84);      /* --bg-deep, see-through over the camera */
-  --sans: "IBM Plex Sans", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --sans: "Geist", system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -25,6 +25,7 @@ html, body {
   background: var(--bg-deep);
   color: var(--text);
   font: 400 15px/1.45 var(--sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 main {
@@ -34,21 +35,17 @@ main {
   place-items: center;
 }
 
-/* Fit the whole camera picture on screen without stretching it. */
+/* The camera and the box layer fill the screen the same way, so they line up:
+   same box, same "contain" fit, and the canvas has the camera's pixel size. */
+#camera,
 #view {
-  max-width: 100%;
-  max-height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
-
-/* Invisible but still "on the page", which iPhone Safari needs to keep frames coming. */
-#camera {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
+#view { pointer-events: none; }
 
 /* ---- Start screen ---- */
 
@@ -141,15 +138,29 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .stats-head .mark { width: 12px; height: 4px; background: var(--paint); flex-shrink: 0; }
 .stats-head b { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Small outlined tag with a dot: gray dot = Practice, yellow dot = Sending. */
 .mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
   margin-left: auto;
   padding: 0 8px;
-  border-radius: 4px;
-  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
   color: var(--text-2);
-  font: 500 12px/20px var(--mono);
+  font: 500 12px/22px var(--sans);
 }
-.mode.on { background: var(--paint); color: var(--bg-deep); }
+.mode::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.mode:empty { display: none; }
+.mode.on { color: var(--text); border-color: rgba(242, 194, 48, 0.4); }
+.mode.on::before { background: var(--paint); }
 
 /* Middle: the three things that matter while filming. */
 .stats-rows { margin: 8px 0 0; }
