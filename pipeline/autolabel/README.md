@@ -78,3 +78,36 @@ python eval_models.py --images DIR --labels DIR --out DIR \
 - Box TP = IoU >= 0.3, greedy by score; conf swept 0.05-0.90. Frame-level P/R too.
 - Outputs: `report.md` (sorted table + verdict), `results.json` (all curves), `worst_errors.html` (top model: 30 worst false positives and missed GT boxes; open it from the out dir, image paths are relative).
 - Needs ultralytics, opencv, numpy. Note: ONNX models are fixed-size, so the 960 mode may just be letterboxed to the export size.
+
+## push_frames.py
+
+Uploads crowd frames (from `fetch_crowd.py`) to R2 through `POST /api/upload`, registers them in the
+review queue (`/api/labels` action `add`, batches of 100) and optionally runs the server-side teacher.
+`frame_id = "crowd_" + <image stem>` (i.e. `crowd_<videoid>_<t_ms>`).
+
+```
+python3 push_frames.py --manifest OUT/manifest.csv --api https://wayneawshackathon.vercel.app --teach \
+    [--concurrency 6] [--limit N] [--dry-run]
+```
+- Resumable: `OUT/push_state.json` maps frame_id to image_url; finished uploads are skipped on rerun (add is an upsert, teach only touches status "new").
+- 429/5xx/network errors retry 4 times with backoff. `--teach` loops `GET ?todo=teach` until empty, or stops after 2 passes where the same frames keep failing; prints progress every 25 frames, taught/error counts and error texts grouped.
+- `--dry-run` prints the plan without network.
+
+## pull_reviewed.py
+
+Exports human-reviewed frames into a YOLO folder: `DIR/{train,test}/images/<frame_id>.jpg` and
+`DIR/{train,test}/labels/<frame_id>.txt` (class 0, `cx cy w h` from the top-left normalised boxes; empty file = no pothole).
+Images are cached. Because `frame_id` is `crowd_<videoid>_<t_ms>`, `make_yolo_dataset.py` (video = name up to the last `_`) keeps each video in one split.
+
+```
+python3 pull_reviewed.py --api https://wayneawshackathon.vercel.app --out reviewed/
+```
+
+End-to-end team flow:
+1. `fetch_crowd.py` -> `OUT/manifest.csv` + frames
+2. `push_frames.py --manifest OUT/manifest.csv --api ... --teach` (one person)
+3. Everyone reviews frames at `/label` until `/api/labels?stats=1` shows `test_left` and `train_left` at 0
+4. `pull_reviewed.py --api ... --out reviewed/`
+5. `eval_models.py --images reviewed/test/images --labels reviewed/test/labels ...` (scoreboard on the test split)
+6. `make_yolo_dataset.py --pair reviewed/train/images reviewed/train/labels --out dataset/ --copy`
+7. Zip `dataset/` and train in Colab.
