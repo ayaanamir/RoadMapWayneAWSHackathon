@@ -1,11 +1,20 @@
-/* Full-screen camera page. Dark background so the camera image stands out. */
+/* Full-screen camera page.
+   Same direction as the map (apps/map/style.css): blunt, civic, exact. Asphalt at night,
+   graphite neutrals, one accent: road-paint yellow. IBM Plex. Every size on a 4px grid. */
 
 :root {
-  --bg: #111111;
-  --text: #f5f5f5;
-  --muted: #a3a3a3;
-  --panel: rgba(17, 17, 17, 0.75);
-  --accent: #f97316; /* orange: same color as our pothole boxes */
+  --bg-deep: #0f0f10;
+  --bg: #141415;
+  --raised: #232325;
+  --line: rgba(237, 237, 237, 0.08);
+  --text: #ededed;
+  --text-2: #a1a1a6;
+  --muted: #85858b;
+  --paint: #f2c230;                     /* road-paint yellow: boxes, "Sending" */
+  --panel: rgba(15, 15, 16, 0.84);      /* --bg-deep, see-through over the camera */
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * { box-sizing: border-box; }
@@ -13,9 +22,9 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--bg);
+  background: var(--bg-deep);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 400 15px/1.45 var(--sans);
 }
 
 main {
@@ -41,21 +50,7 @@ main {
   pointer-events: none;
 }
 
-/* Loading and error messages, on top of the camera picture. */
-#banner {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: max(24px, env(safe-area-inset-bottom));
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--panel);
-  text-align: center;
-  font-size: 1rem;
-}
-
-#banner[hidden] { display: none; }
+/* ---- Start screen ---- */
 
 #start-screen {
   position: absolute;
@@ -64,68 +59,151 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
   padding: 24px 16px;
   text-align: center;
-  background: var(--bg);
+  background: var(--bg-deep);
 }
 
 /* Needed because "display: flex" above would otherwise win over the hidden switch,
    and the start screen would stay on top of the camera. */
 #start-screen[hidden] { display: none; }
 
-#start-screen h1 { margin: 0; font-size: 2rem; }
-#start-screen p { margin: 0; color: var(--muted); max-width: 32ch; }
+#start-screen p { margin: 0; max-width: 30ch; color: var(--text-2); }
+#start-screen #status { min-height: 20px; color: var(--muted); font: 400 13px/20px var(--mono); }
+
+/* Product name with the short yellow paint stripe in front, same as the map header. */
+.brand {
+  margin: 0 0 4px;
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+.brand::before {
+  content: "";
+  display: inline-block;
+  width: 24px;
+  height: 4px;
+  margin: 0 12px 8px 0;
+  background: var(--paint);
+  vertical-align: middle;
+}
+
+/* ---- Buttons ---- */
 
 button {
-  font: inherit;
+  font: 500 14px/20px var(--sans);
   color: var(--text);
-  background: #262626;
-  border: 1px solid #404040;
-  border-radius: 10px;
-  padding: 10px 14px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
   cursor: pointer;
+  transition: background-color 150ms var(--ease), transform 150ms var(--ease);
 }
-
-#start {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #111111;
-  font-weight: 600;
-  font-size: 1.1rem;
-  padding: 14px 28px;
-}
-
+button:active { transform: scale(0.97); }
+button:focus-visible { outline: 2px solid var(--paint); outline-offset: 2px; }
 button:disabled { opacity: 0.5; cursor: default; }
 
-/* Small stats box in the top-left corner, clear of the phone's notch. */
+/* Main action: off-white on dark, like the map's "report" button. */
+#start {
+  min-width: 200px;
+  padding: 12px 24px;
+  border: 0;
+  background: var(--text);
+  color: var(--bg-deep);
+  font-size: 16px;
+  line-height: 24px;
+}
+#start:hover { background: #ffffff; }
+
+/* ---- Status box (top left, clear of the notch) ---- */
+
 #stats {
   position: absolute;
-  top: max(12px, env(safe-area-inset-top));
-  left: 12px;
-  display: grid;
-  gap: 4px;
-  min-width: 170px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  width: 232px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   background: var(--panel);
-  font-size: 0.85rem;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
-
 #stats[hidden] { display: none; }
 
-#stats div { display: flex; justify-content: space-between; gap: 12px; }
-#stats span { color: var(--muted); }
-#stats b { font-variant-numeric: tabular-nums; }
-/* Last send result, e.g. "Sent. On the map as ph_123." */
-#stats p {
-  margin: 4px 0 0;
-  max-width: 220px;
-  color: var(--text);
-  font-size: 0.8rem;
-  line-height: 1.3;
+/* Top: model name, and whether it sends ("Sending" in yellow) or not ("Practice"). */
+.stats-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
-#stats p[hidden] { display: none; }
+.stats-head .mark { width: 12px; height: 4px; background: var(--paint); flex-shrink: 0; }
+.stats-head b { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mode {
+  margin-left: auto;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--text-2);
+  font: 500 12px/20px var(--mono);
+}
+.mode.on { background: var(--paint); color: var(--bg-deep); }
 
-#stats .actions { margin-top: 6px; gap: 6px; }
-#stats .actions button { flex: 1; padding: 6px 8px; font-size: 0.8rem; }
+/* Middle: the three things that matter while filming. */
+.stats-rows { margin: 8px 0 0; }
+.stats-rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+.stats-rows dt { color: var(--text-2); font-size: 14px; }
+.stats-rows dd { margin: 0; font: 500 14px/20px var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Last send result, e.g. "Sent. On the map as ph_123." */
+#stat-message {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 20px;
+}
+#stat-message[hidden] { display: none; }
+
+/* Bottom: speed numbers, small and quiet. */
+.stats-speed {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font: 400 12px/16px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions { display: flex; gap: 8px; margin-top: 12px; }
+.actions button { flex: 1; padding: 6px 8px; font-size: 13px; }
+/* "Switch engine" is for testing, so it is a quiet text button. */
+.actions .quiet { flex: 0 0 auto; background: transparent; border-color: transparent; color: var(--muted); }
+.actions .quiet:hover { color: var(--text-2); }
+
+/* ---- Loading and error messages, on top of the camera picture ---- */
+
+#banner {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  margin: 0 auto;
+  max-width: 480px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  text-align: center;
+  font-size: 15px;
+}
+#banner[hidden] { display: none; }

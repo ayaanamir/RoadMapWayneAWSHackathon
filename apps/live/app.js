@@ -25,6 +25,7 @@ const banner = document.getElementById("banner");
 const stats = {
   panel: document.getElementById("stats"),
   model: document.getElementById("stat-model"),
+  mode: document.getElementById("stat-mode"),
   backend: document.getElementById("stat-backend"),
   ms: document.getElementById("stat-ms"),
   fps: document.getElementById("stat-fps"),
@@ -82,7 +83,10 @@ async function start() {
   try {
     await detector.load(say);
     stats.backend.textContent = detector.backend;
-    stats.model.textContent = modelName();
+    const { name, sending } = modelInfo();
+    stats.model.textContent = name;
+    stats.mode.textContent = sending ? "Sending" : "Practice";
+    stats.mode.className = sending ? "mode on" : "mode";
     stats.panel.hidden = false;
     banner.hidden = true;
     // WebGPU was picked by hand and it worked: stop forcing WASM on this phone.
@@ -176,11 +180,11 @@ function drawBoxes(boxes) {
   const line = Math.max(2, Math.round(view.width / 320));
   const fontSize = Math.max(14, Math.round(view.width / 45));
   ctx.lineWidth = line;
-  ctx.font = `600 ${fontSize}px system-ui, sans-serif`;
+  ctx.font = `500 ${fontSize}px "IBM Plex Mono", ui-monospace, monospace`;
   ctx.textBaseline = "top";
 
   for (const b of boxes) {
-    const color = "#f97316";
+    const color = "#f2c230"; // road-paint yellow, the same as "still there" on the map
     ctx.strokeStyle = color;
     ctx.strokeRect(b.x, b.y, b.w, b.h);
 
@@ -191,7 +195,7 @@ function drawBoxes(boxes) {
     const ty = b.y - textH >= 0 ? b.y - textH : b.y;
     ctx.fillStyle = color;
     ctx.fillRect(b.x, ty, textW, textH);
-    ctx.fillStyle = "#111111";
+    ctx.fillStyle = "#141415";
     ctx.fillText(text, b.x + 4, ty + 3);
   }
 }
@@ -230,15 +234,14 @@ async function flipCamera() {
   }
 }
 
-// Short model name for the stats box, so it is clear which model is running.
-// "pothole" = Muq's pothole model, "stock" = the old 80-object placeholder.
-// "(dry)" means nothing is sent to the map.
-function modelName() {
+// Which model is running, for the stats box, and whether sightings go to the map.
+// "Practice" (?dry in the link) means nothing is sent.
+function modelInfo() {
   const file = MODEL_URL.split("/").pop();
-  const name = file === "pothole.onnx" ? "pothole"
-    : file === "yolo11n.onnx" ? "stock"
+  const name = file === "pothole.onnx" ? "Pothole model"
+    : file === "yolo11n.onnx" ? "Stock model"
     : file.replace(/\.onnx$/, "");
-  return DRY_RUN ? `${name} (dry)` : name;
+  return { name, sending: !DRY_RUN };
 }
 
 // Update the GPS / sent lines in the stats box.
