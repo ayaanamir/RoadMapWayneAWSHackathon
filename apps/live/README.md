@@ -78,7 +78,7 @@ block the page from loading the model. Uploads still need the secret keys.
 | Device | Browser | WebGPU ms | WASM ms | Notes |
 |---|---|---|---|---|
 | MacBook (dev laptop) | Chrome | ~31 | ~311 | Test photo, not camera. WASM runs on one thread (see below). |
-| Ado's phone | | | | |
+| iPhone 16 (latest iOS) | Safari | ~55 (spikes to 120+) | not measured | Real camera. About 7.4 checks per second on WebGPU. |
 | Muq's phone | | | | |
 | Ayaan's phone | | | | |
 
