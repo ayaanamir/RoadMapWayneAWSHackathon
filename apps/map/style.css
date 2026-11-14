@@ -31,8 +31,7 @@ body { display: grid; grid-template-columns: 1fr var(--side); grid-template-rows
 #map { min-height: 0; }
 .brand { white-space: nowrap; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
 .brand::before { content: ""; display: inline-block; width: 24px; height: 4px; margin: 0 12px 4px 0; background: var(--paint); vertical-align: middle; }
-/* Top bar: what it is, then the totals on the right, then live or sample data. */
-.tagline { margin: 0; padding-left: 24px; border-left: 1px solid rgba(237, 237, 237, 0.14); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Top bar: the name, then the totals on the right, then live or sample data. */
 .totals { display: flex; align-items: baseline; gap: 24px; margin: 0 0 0 auto; flex-shrink: 0; }
 /* Number and label on one line, e.g. "6 city reports". */
 .totals div { display: flex; align-items: baseline; gap: 8px; }
@@ -187,7 +186,6 @@ a.row-id:hover { text-decoration-color: var(--text); }
 .leaflet-interactive { transition: opacity 120ms var(--ease); }
 .leaflet-interactive:focus { outline: none; }
 
-@media (max-width: 1100px) { .tagline { display: none; } }
 @media (max-width: 900px) {
   body { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
   .bar, #map, .panel { grid-column: 1; }
