@@ -8,11 +8,15 @@ const params = new URLSearchParams(window.location.search);
 export const ORT_VERSION = "1.20.1";
 export const ORT_CDN = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
 
-// Where the model file lives.
-// Default: a local copy for testing (apps/live/model/ is not committed to git).
-// Later (#39) this will point at the pothole model on R2:
-//   <R2_PUBLIC_URL>/models/pothole.onnx
-export const MODEL_URL = params.get("model") || "/apps/live/model/yolo11n.onnx";
+// Public address of the team's R2 bucket (same as R2_PUBLIC_URL in .env).
+// This is safe to have in code: it is read only. The upload keys stay in .env.
+export const R2_PUBLIC_URL = "https://pub-9da122d7960d49de90da1a69cb4fe7f9.r2.dev";
+
+// Where the model file lives. Upload with apps/live/tools/upload_model.py.
+// Now: the stock COCO model, as a placeholder.
+// Next (#39): change to `${R2_PUBLIC_URL}/models/pothole.onnx`.
+// To test a local copy instead: ?model=/apps/live/model/yolo11n.onnx
+export const MODEL_URL = params.get("model") || `${R2_PUBLIC_URL}/models/yolo11n.onnx`;
 
 // Which engine runs the model: "webgpu", "wasm", or "auto" (try WebGPU, then WASM).
 export const BACKEND = params.get("ep") || "auto";
