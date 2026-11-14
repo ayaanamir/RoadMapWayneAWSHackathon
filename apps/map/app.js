@@ -11,12 +11,14 @@ const STYLE = {
 };
 // Same wording as the evidence report (report.js), so a state reads the same everywhere.
 const LABEL = {
-  still_there: 'Still there after the city closed it',
-  unreported: 'Seen by us, not reported to the city',
-  fixed_confirmed: 'Fixed, checked by us',
-  reported_only: 'City report, not checked yet',
-  unknown: 'Not enough evidence yet',
+  still_there: 'Still there after closing',
+  unreported: 'Not reported to the city',
+  fixed_confirmed: 'Fixed',
+  reported_only: 'Not checked yet',
+  unknown: 'Not enough evidence',
 };
+// Short names for the list tags.
+const SHORT = { still_there: 'Still there', unreported: 'Not reported', fixed_confirmed: 'Fixed' };
 const VERDICT = { pothole: 'Pothole', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not checked yet' };
 
 const map = L.map('map', { zoomControl: true, attributionControl: true }).setView(NEWLAB, 14);
@@ -41,34 +43,29 @@ let fitted = false;
 const fmtDate = (iso) => iso
   ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Detroit' })
   : '';
+// Short date in the list rows: no year when it is this year.
+const shortDate = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(new Date(iso).getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }), timeZone: 'America/Detroit' });
 const fmtTime = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Detroit' });
 const days = (a, b) => Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// The city's own record, shown where its photo would be (most reports have no photo).
-const issueLink = (r) => `<a href="${esc(r.issue_url)}" target="_blank" rel="noopener">Issue #${esc(r.issue_id)} ↗</a>`;
-function issueCard(r, total) {
-  const closed = r.closed_at
-    ? `Closed ${esc(fmtDate(r.closed_at))} · ${days(r.created_at, r.closed_at)} ${days(r.created_at, r.closed_at) === 1 ? 'day' : 'days'} later`
-    : 'Still open';
-  return `<a class="issue-card" href="${esc(r.issue_url)}" target="_blank" rel="noopener">
-    <span class="issue-no">Issue #${esc(r.issue_id)}</span>
-    <span class="issue-status ${esc((r.status || '').toLowerCase())}">${esc(r.status)}</span>
-    <span class="issue-line">Filed ${esc(fmtDate(r.created_at))}</span>
-    <span class="issue-line">${closed}</span>
-    <span class="issue-addr">${esc(r.address)}</span>
-    ${total > 1 ? `<span class="issue-more">+ ${total - 1} more ${total - 1 === 1 ? 'report' : 'reports'} here</span>` : ''}
-    <span class="issue-open">View on Improve Detroit ↗</span>
-  </a>`;
-}
+const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 const order = (p) => ({ still_there: 3, unreported: 2, fixed_confirmed: 1 }[p.state] || 0);
+
+// The report page. On Vercel it is /report; when the files are opened straight from
+// the repo (local testing) that short path does not exist, so use the file itself.
+const REPORT_PAGE = location.pathname.startsWith('/apps/') ? '/apps/map/report.html' : '/report';
+
+let live = false; // true when the data came from the API, false for the sample file
 
 async function load() {
   try {
     const r = await fetch('/api/potholes', { cache: 'no-store' });
     if (!r.ok) throw new Error(r.status);
+    live = true;
     return (await r.json()).potholes;
   } catch (e) {
     console.warn('API failed, using fixtures', e);
+    live = false;
     const r = await fetch('/shared/fixtures/potholes.sample.json');
     return (await r.json()).potholes;
   }
@@ -93,14 +90,15 @@ function draw() {
   }
   for (const [id, m] of markers) if (!seen.has(id)) { layer.removeLayer(m); markers.delete(id); }
 
-  // Header: totals in one short line, and a count next to each legend color.
-  const reports = potholes.reduce((n, p) => n + p.city_reports.length, 0);
-  document.getElementById('summary').innerHTML =
-    `<b>${potholes.length}</b> spots, <b>${reports}</b> city reports`;
-  for (const state of ['still_there', 'unreported', 'fixed_confirmed', 'reported_only']) {
-    const n = potholes.filter((p) => p.state === state || (state === 'reported_only' && p.state === 'unknown')).length;
-    document.getElementById(`n-${state}`).textContent = n;
-  }
+  // Top bar: totals, and whether this is live data or the saved sample.
+  document.getElementById('t-spots').textContent = potholes.length;
+  document.getElementById('t-reports').textContent = potholes.reduce((n, p) => n + p.city_reports.length, 0);
+  document.getElementById('t-still').textContent = countState('still_there');
+  const source = document.getElementById('source');
+  source.className = `source ${live ? 'live' : 'sample'}`;
+  source.textContent = live
+    ? `Live, ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+    : 'Sample data';
 
   if (!fitted && potholes.length) {
     fitted = true;
@@ -109,68 +107,206 @@ function draw() {
 }
 
 const byId = (id) => potholes.find((p) => p.pothole_id === id);
+// Gray pins cover two states (not checked yet, not enough evidence), so count them together.
+const stateOf = (p) => (p.state === 'unknown' ? 'reported_only' : p.state);
+const countState = (state) => potholes.filter((p) => stateOf(p) === state).length;
+const LEGEND = [
+  ['still_there', 'Still there'],
+  ['unreported', 'Not reported'],
+  ['fixed_confirmed', 'Fixed'],
+  ['reported_only', 'Not checked'],
+];
+let filter = null; // a state from LEGEND, or null for all spots
+
+// ---- Sidebar ----
+// Two views in the same panel:
+//   list: nothing picked. Every spot, the important ones first. Click one to open it.
+//   spot: one pothole. Headline numbers, the city's reports, what our cameras saw,
+//         who owns the road, and a link to the full evidence report.
+
+const panel = document.getElementById('panel');
+let lastPanelHtml = '';
+
+// The panel is rebuilt every 5 s with fresh data. Only touch the page when something
+// changed, so the scroll position and hover state are kept.
+function setPanel(html) {
+  if (html === lastPanelHtml) return;
+  const scroll = panel.scrollTop;
+  lastPanelHtml = html;
+  panel.innerHTML = html;
+  panel.scrollTop = scroll;
+}
+
+// A ring around the picked pin, so you can see where you are on the map.
+const ring = L.circleMarker(NEWLAB, { radius: 15, color: '#ededed', weight: 2, fill: false, interactive: false });
 
 function select(id, pan = true) {
-  selectedId = id;
   const p = byId(id);
   if (!p) return;
+  const changed = selectedId !== id;
+  selectedId = id;
   history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
+  ring.setLatLng([p.lat, p.lon]).addTo(map);
   if (pan) map.setView([p.lat, p.lon], Math.max(map.getZoom(), 16));
-  renderPanel(p);
+  if (changed) { lastPanelHtml = ''; panel.scrollTop = 0; }
+  renderSpot(p);
 }
 
-function renderPanel(p) {
-  const events = [];
-  for (const r of p.city_reports) {
-    events.push({ at: r.created_at, cls: 'report', what: 'Reported to the city',
-      why: `<a href="${esc(r.issue_url)}" target="_blank" rel="noopener">Issue ${esc(r.issue_id)}</a>` });
-    if (r.closed_at) events.push({ at: r.closed_at, cls: 'closed', what: `Closed by the city`,
-      why: (() => { const n = days(r.created_at, r.closed_at); return `${n} ${n === 1 ? 'day' : 'days'} after the report${r.status === 'Archived' ? ' · archived' : ''}`; })() });
-  }
-  for (const d of p.detections) {
-    events.push({ at: d.captured_at, cls: d.verdict === 'patch' ? 'patch' : d.verdict === 'pothole' ? 'seen' : 'report',
-      what: d.source === 'live' ? 'Seen by our phone camera' : 'Seen by our dash camera',
-      why: `${esc(VERDICT[d.verdict] || d.verdict)}${d.verdict_reason ? ' · ' + esc(d.verdict_reason) : ''}`, time: true });
-  }
-  events.sort((a, b) => new Date(a.at) - new Date(b.at));
-
-  // Evidence from the city: the report with a photo if any, else the newest report.
-  const byNewest = [...p.city_reports].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  const cityReport = byNewest.find((r) => r.photo_url) || byNewest[0];
-  const ourFrame = p.detections.filter((d) => d.verdict === 'pothole').at(-1) || p.detections.at(-1);
-  const photos = (cityReport || ourFrame) ? `
-    <div class="photos">
-      <figure>${cityReport?.photo_url
-          ? `<img src="${esc(cityReport.photo_url)}" alt="City report photo" onerror="this.outerHTML='<div class=none>Photo unavailable</div>'">`
-          : cityReport ? issueCard(cityReport, p.city_reports.length) : '<div class="none">Never reported to the city</div>'}
-        <figcaption>${cityReport?.photo_url ? `City report photo, ${issueLink(cityReport)}` : 'City report'}</figcaption></figure>
-      <figure>${ourFrame ? `<img src="${esc(ourFrame.image_url)}" alt="Our latest frame" onerror="this.outerHTML='<div class=none>Frame unavailable</div>'">` : '<div class="none">Not seen by our cameras yet</div>'}
-        <figcaption>${ourFrame ? 'Our camera, ' + esc(fmtTime(ourFrame.captured_at)) : 'Our camera'}</figcaption>
-        ${ourFrame ? `<div class="verdict">${esc(VERDICT[ourFrame.verdict] || ourFrame.verdict)}${ourFrame.verdict_reason ? '. ' + esc(ourFrame.verdict_reason) : ''}</div>` : ''}</figure>
-    </div>` : '';
-
-  document.getElementById('panel').innerHTML = `
-    <h1 class="place">${esc(p.address || 'Unnamed spot')}</h1>
-    <div class="status ${esc(p.state)}"><span class="dot ${esc(p.state)}"></span>${esc(LABEL[p.state] || p.state)}</div>
-    <p class="owner">Road owner: <b>${esc(roadOwner(p.address).agency.short)}</b>${roadOwner(p.address).route ? `, ${esc(roadOwner(p.address).route)}` : ''}</p>
-    <a class="report-link" href="/report?id=${encodeURIComponent(p.pothole_id)}">Open evidence report</a>
-    ${photos}
-    <ol class="timeline">
-      ${events.map((e) => `<li class="${e.cls}">
-        <div class="meta">${esc(e.time ? fmtTime(e.at) : fmtDate(e.at))}</div>
-        <div class="what">${e.what}</div>
-        <div class="why">${e.why}</div></li>`).join('')}
-    </ol>
-    <p class="meta">${esc(p.pothole_id)}, ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</p>`;
+function showList() {
+  selectedId = null;
+  history.replaceState(null, '', location.pathname);
+  map.removeLayer(ring);
+  lastPanelHtml = '';
+  panel.scrollTop = 0;
+  renderList();
 }
+
+// Facts about one spot, used by the spot view and the list rows.
+function facts(p) {
+  const reports = [...p.city_reports].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const closed = reports.filter((r) => r.closed_at);
+  const closeDays = closed.map((r) => days(r.created_at, r.closed_at));
+  const lastClose = closed.map((r) => r.closed_at).sort().at(-1) || null;
+  const dets = [...p.detections].sort((a, b) => new Date(a.captured_at) - new Date(b.captured_at));
+  const hits = dets.filter((d) => d.verdict === 'pothole');
+  const hitAfterClose = lastClose ? hits.filter((d) => d.captured_at > lastClose).at(-1) : null;
+  return {
+    reports, closed, dets, hits, lastClose,
+    fastest: closeDays.length ? Math.min(...closeDays) : null,
+    stillDays: p.state === 'still_there' && hitAfterClose ? days(lastClose, hitAfterClose.captured_at) : null,
+  };
+}
+
+// One short line under a spot's address in the list.
+function listLine(p, f) {
+  const parts = [];
+  if (f.reports.length) parts.push(`Reported ${f.reports.length}×`);
+  if (f.closed.length) parts.push(`closed ${f.closed.length}×`);
+  if (f.hits.length) parts.push(`seen ${f.hits.length}× by us`);
+  return parts.join(', ') || 'No reports yet';
+}
+
+function renderList() {
+  // Important first: still there, then not reported, then fixed. Within that, the
+  // spots reported most often, then the most recent.
+  const rows = potholes
+    .filter((p) => !filter || stateOf(p) === filter)
+    .map((p) => ({ p, f: facts(p) }))
+    .sort((a, b) =>
+      order(b.p) - order(a.p)
+      || b.f.reports.length - a.f.reports.length
+      || String(b.f.reports.at(-1)?.created_at || '').localeCompare(String(a.f.reports.at(-1)?.created_at || '')));
+
+  setPanel(`
+    <!-- Legend: what each pin color means, with counts. Click one to show only those. -->
+    <div class="legend" role="group" aria-label="Pin colors">
+      ${LEGEND.map(([state, name]) => `<button type="button" class="chip" data-state="${state}" aria-pressed="${filter === state}">
+        <span class="dot ${state}"></span>${name}<b>${countState(state)}</b></button>`).join('')}
+    </div>
+    <header class="panel-head">
+      <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
+      <p class="panel-sub">${rows.length ? 'Most important first' : 'None yet'}</p>
+    </header>
+    <ul class="spots">
+      ${rows.map(({ p, f }) => `
+        <li><button type="button" class="spot-row" data-id="${esc(p.pothole_id)}">
+          <span class="dot ${esc(p.state)}"></span>
+          <span class="spot-text">
+            <span class="spot-name">${esc(p.address || 'Unnamed spot')}</span>
+            <span class="spot-line">${esc(listLine(p, f))}</span>
+          </span>
+          ${order(p) > 0 ? `<span class="spot-tag ${esc(p.state)}">${esc(SHORT[p.state])}</span>` : ''}
+        </button></li>`).join('')}
+    </ul>`);
+}
+
+function renderSpot(p) {
+  const f = facts(p);
+  const owner = roadOwner(p.address);
+
+  // Headline numbers. "Seen after closing" only when it applies.
+  const stats = [
+    ['Reported', `${f.reports.length}×`],
+    ['Closed', `${f.closed.length}×`],
+    ['Fastest close', f.fastest === null ? 'None' : plural(f.fastest, 'day')],
+  ];
+  if (f.stillDays !== null) stats.push(['Seen after closing', plural(f.stillDays, 'day'), 'still']);
+
+  // One row per city report: filed, then closed (or still open).
+  const reportRows = f.reports.map((r) => {
+    const outcome = r.closed_at
+      ? `Closed ${shortDate(r.closed_at)}, ${plural(days(r.created_at, r.closed_at), 'day')}`
+      : 'Still open';
+    return `<li>
+      <a class="row-id" href="${esc(r.issue_url)}" target="_blank" rel="noopener">#${esc(r.issue_id)}</a>
+      <span class="row-main">Filed ${esc(shortDate(r.created_at))}</span>
+      <span class="row-sub ${r.closed_at ? '' : 'open'}">${esc(outcome)}</span>
+    </li>`;
+  }).join('');
+  const cityPhoto = [...f.reports].reverse().find((r) => r.photo_url);
+
+  // What our cameras saw, newest first, with the newest frame as a photo.
+  const camRows = [...f.dets].reverse().map((d) => `<li class="${d.verdict === 'pothole' ? 'hit' : ''}">
+      <span class="row-id">${esc(d.source === 'live' ? 'Phone' : 'Dash cam')}</span>
+      <span class="row-main">${esc(VERDICT[d.verdict] || d.verdict)}, ${esc(fmtTime(d.captured_at))}</span>
+      ${d.verdict_reason ? `<span class="row-sub">${esc(d.verdict_reason)}</span>` : ''}
+    </li>`).join('');
+  const frame = f.hits.at(-1) || f.dets.at(-1);
+
+  setPanel(`
+    <button type="button" class="back" id="back">← All spots</button>
+    <header class="spot-head">
+      <h1 class="place">${esc(p.address || 'Unnamed spot')}</h1>
+      <p class="status ${esc(p.state)}"><span class="dot ${esc(p.state)}"></span>${esc(LABEL[p.state] || p.state)}</p>
+    </header>
+
+    <dl class="stats n${stats.length}">
+      ${stats.map(([k, v, cls]) => `<div class="${cls || ''}"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}
+    </dl>
+
+    <section class="block">
+      <h2>City reports</h2>
+      ${cityPhoto ? `<img class="shot" src="${esc(cityPhoto.photo_url)}" alt="Photo from city report ${esc(cityPhoto.issue_id)}" onerror="this.remove()">` : ''}
+      ${f.reports.length ? `<ol class="rows">${reportRows}</ol>` : '<p class="note">No city report</p>'}
+    </section>
+
+    <section class="block">
+      <h2>Our cameras</h2>
+      ${frame?.image_url ? `<img class="shot" src="${esc(frame.image_url)}" alt="Our camera frame" onerror="this.remove()">` : ''}
+      ${f.dets.length ? `<ol class="rows">${camRows}</ol>` : '<p class="note">Not checked yet</p>'}
+    </section>
+
+    <section class="block owner">
+      <h2>Who fixes it</h2>
+      <p><b>${esc(owner.agency.short)}</b>, ${esc(owner.kind.toLowerCase())}</p>
+    </section>
+
+    <a class="report-link" href="${REPORT_PAGE}?id=${encodeURIComponent(p.pothole_id)}">Evidence report and PDF</a>
+
+    <dl class="details">
+      <div><dt>Location</dt><dd><a href="https://www.google.com/maps?q=${p.lat.toFixed(5)},${p.lon.toFixed(5)}" target="_blank" rel="noopener">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} ↗</a></dd></div>
+      <div><dt>Spot ID</dt><dd>${esc(p.pothole_id)}</dd></div>
+    </dl>`);
+}
+
+// Clicks inside the panel: a legend chip, a spot in the list, or the back button.
+panel.addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (chip) {
+    filter = filter === chip.dataset.state ? null : chip.dataset.state;
+    panel.scrollTop = 0;
+    return renderList();
+  }
+  const row = e.target.closest('.spot-row');
+  if (row) return select(row.dataset.id);
+  if (e.target.closest('#back')) showList();
+});
 
 async function tick() {
   potholes = await load();
   draw();
-  if (selectedId && byId(selectedId)) {
-    const first = !document.querySelector('.place');
-    select(selectedId, first);
-  }
+  if (selectedId && byId(selectedId)) select(selectedId, !lastPanelHtml);
+  else renderList();
 }
 
 tick();

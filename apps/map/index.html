@@ -6,35 +6,28 @@
   <title>Still There · Detroit potholes</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
   <link rel="stylesheet" href="/apps/map/style.css">
 </head>
 <body>
+  <!-- Top bar: name, what it is, the totals that matter, and whether the data is live.
+       Numbers filled in by app.js. -->
   <header class="bar">
     <div class="brand">Still There</div>
-    <div class="summary" id="summary">Loading city reports</div>
-    <!-- One entry per pin color, with how many pins have it. Counts filled in by app.js. -->
-    <ul class="legend" aria-label="Legend">
-      <li><span class="dot still_there"></span>Still there<b id="n-still_there">0</b></li>
-      <li><span class="dot unreported"></span>Not reported<b id="n-unreported">0</b></li>
-      <li><span class="dot fixed_confirmed"></span>Fixed<b id="n-fixed_confirmed">0</b></li>
-      <li><span class="dot reported_only"></span>Not checked yet<b id="n-reported_only">0</b></li>
-    </ul>
+    <p class="tagline">Closed by the city. Still there?</p>
+    <dl class="totals">
+      <div><dd id="t-spots">0</dd><dt>spots</dt></div>
+      <div><dd id="t-reports">0</dd><dt>city reports</dt></div>
+      <div class="still"><dd id="t-still">0</dd><dt>still there</dt></div>
+    </dl>
+    <p class="source" id="source">Loading</p>
   </header>
   <main class="layout">
     <div id="map" aria-label="Map of pothole reports"></div>
-    <aside class="panel" id="panel" aria-live="polite">
-      <div class="empty">
-        <p class="empty-title">Pick a pin</p>
-        <p class="muted">Each pin is a pothole spot in Corktown, Midtown and Southwest Detroit, from the city's own reports and our cameras.</p>
-        <ul class="key">
-          <li><span class="dot still_there"></span><span><b>Still there.</b> The city closed the report, and our camera saw the pothole after that.</span></li>
-          <li><span class="dot unreported"></span><span><b>Not reported.</b> Our camera found it. The city has no report.</span></li>
-          <li><span class="dot fixed_confirmed"></span><span><b>Fixed.</b> Our camera saw the patch.</span></li>
-          <li><span class="dot reported_only"></span><span><b>Not checked yet.</b> City reports only. We have not driven past.</span></li>
-        </ul>
-      </div>
+    <!-- Sidebar. app.js fills it: a list of spots, or one spot when a pin is picked. -->
+    <aside class="panel" id="panel">
+      <p class="panel-sub">Loading spots</p>
     </aside>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>

@@ -3,7 +3,7 @@
   --bg: #141415; --bg-deep: #0f0f10; --card: #19191b; --raised: #232325;
   --line: rgba(237, 237, 237, 0.08); --text: #ededed; --text-2: #a1a1a6; --muted: #85858b;
   --paint: #f2c230; --fixed: #4cc38a;
-  --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --sans: "Geist", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 var(--sans); }
@@ -24,9 +24,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--paint); outline
 .kicker .meta { margin-left: auto; }
 .kicker::before { content: ""; width: 24px; height: 4px; background: var(--paint); }
 h1 { margin: 0; font-size: 40px; font-weight: 500; line-height: 1.15; letter-spacing: -0.01em; }
-.state { margin: 8px 0 0; font-size: 18px; color: var(--text-2); }
-.state.still_there { color: var(--paint); }
-.state.fixed_confirmed { color: var(--fixed); }
+/* Status tag: tinted fill and bold, same as the map sidebar. */
+.state { display: inline-block; margin: 12px 0 0; padding: 4px 12px; border-radius: 8px; background: var(--card); font-size: 16px; font-weight: 600; color: var(--text); }
+.state.still_there { background: rgba(242, 194, 48, 0.14); color: var(--paint); }
+.state.fixed_confirmed { background: rgba(76, 195, 138, 0.14); color: var(--fixed); }
 
 .summary { margin: 32px 0; padding: 20px 24px; border-left: 4px solid var(--paint); background: var(--card); border-radius: 0 12px 12px 0; font-size: 20px; line-height: 1.5; }
 
