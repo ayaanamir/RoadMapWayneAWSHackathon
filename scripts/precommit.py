@@ -140,7 +140,9 @@ def main():
 
     behind = git("rev-list", "--count", f"HEAD..{BASE}") or "0"
     for ref in others:
-        theirs = lines(git("diff", "--name-only", f"HEAD...{ref}"))  # what they changed since we split
+        # main: what main changed since we split. A branch: only its own work (vs main),
+        # so branches that merely contain main's commits don't show up as collisions.
+        theirs = lines(git("diff", "--name-only", f"HEAD...{ref}" if ref == BASE else f"{BASE}...{ref}"))
         overlap = theirs & mine
         if not overlap:
             continue
