@@ -4,6 +4,20 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · #38 fix: stuck on "Warming up" on a phone (Ado + Claude)
+
+Branch: `live/warmup-fallback`.
+
+- On Ado's phone the page stayed on "Warming up..." forever. WebGPU started, but its
+  first run never finished, and the page had no time limit.
+- Now each engine must finish one test run within a time limit (WebGPU 15 s, WASM 60 s).
+  If WebGPU is stuck, the page moves on to WASM by itself.
+- The model is downloaded once and reused, so switching engines does not download it
+  again.
+- The status line counts seconds while warming up, so you can tell it is not frozen.
+- Tested on laptop Chrome with a fake "WebGPU hangs" case: switched to WASM after 15 s
+  and found the same 5 objects in the test photo.
+
 ## 2026-11-14 · #38 model on R2 (Ado + Claude)
 
 Branch: `live/model-on-r2`.

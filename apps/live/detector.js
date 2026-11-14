@@ -38,35 +38,52 @@ export class Detector {
     ort.env.wasm.wasmPaths = ORT_CDN;
 
     const started = performance.now();
-    const tries = backendsToTry();
-    let lastError = null;
 
-    for (const backend of tries) {
+    // Download the model file once. If the first engine fails we can try the next
+    // one without downloading the 11 MB file again.
+    onStatus("Downloading model...");
+    const response = await fetch(MODEL_URL);
+    if (!response.ok) {
+      throw new Error(`Could not download the model from ${MODEL_URL} (HTTP ${response.status}).`);
+    }
+    const modelBytes = new Uint8Array(await response.arrayBuffer());
+
+    // Try each engine. An engine only counts as working once it has finished one
+    // test run, because on some phones WebGPU loads fine but then hangs on its
+    // first run. If that happens we give up on it after a time limit and move on.
+    let lastError = null;
+    for (const backend of backendsToTry()) {
       try {
-        onStatus(`Loading model (${backend})...`);
-        this.session = await ort.InferenceSession.create(MODEL_URL, {
+        onStatus(`Starting model (${backend})...`);
+        const session = await ort.InferenceSession.create(modelBytes, {
           executionProviders: [backend],
           graphOptimizationLevel: "all",
         });
+
+        // The first run is always slow (setup work). Do it now, on a blank image,
+        // rather than on the first real camera frame.
+        const input = { [session.inputNames[0]]: blankInput() };
+        await withTimeLimit(
+          session.run(input),
+          WARMUP_LIMIT_MS[backend],
+          (seconds) => onStatus(`Warming up (${backend}), ${seconds}s...`),
+        );
+
+        this.session = session;
         this.backend = backend;
         break;
       } catch (err) {
-        console.warn(`[live] ${backend} failed to load the model:`, err);
+        console.warn(`[live] ${backend} did not work, trying the next engine:`, err);
         lastError = err;
       }
     }
     if (!this.session) {
-      throw new Error(`Could not load the model from ${MODEL_URL}. ${lastError?.message || ""}`);
+      throw new Error(`The model would not run on this device. ${lastError?.message || ""}`);
     }
 
     this.loadMs = performance.now() - started;
     this.inputName = this.session.inputNames[0];
     this.outputName = this.session.outputNames[0];
-
-    // Run once on a blank image. The first run is always slow (setup work), and we
-    // would rather pay that cost now than on the first real frame.
-    onStatus("Warming up...");
-    await this.session.run({ [this.inputName]: blankInput() });
   }
 
   // Find objects in one frame. `source` can be a <video>, <canvas>, or <img>.
@@ -162,6 +179,30 @@ function backendsToTry() {
   if (BACKEND === "webgpu" || BACKEND === "wasm") return [BACKEND];
   // "auto": WebGPU is usually much faster, but not every phone browser has it.
   return "gpu" in navigator ? ["webgpu", "wasm"] : ["wasm"];
+}
+
+// How long the first (warm-up) run may take before we give up on an engine.
+// WebGPU is fast when it works, so a long wait means it is stuck. WASM is slow on
+// older phones but reliable, so it gets more time.
+const WARMUP_LIMIT_MS = { webgpu: 15_000, wasm: 60_000 };
+
+// Wait for `promise`, but fail if it takes longer than `limitMs`.
+// Calls onTick(seconds) once a second so the page can show it is still working.
+function withTimeLimit(promise, limitMs, onTick) {
+  let seconds = 0;
+  let ticker;
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    ticker = setInterval(() => onTick(++seconds), 1000);
+    timer = setTimeout(
+      () => reject(new Error(`no result after ${limitMs / 1000} seconds`)),
+      limitMs,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    clearInterval(ticker);
+    clearTimeout(timer);
+  });
 }
 
 // An all-zero input, used for the warm-up run.
