@@ -56,6 +56,34 @@ export const CONFIDENCE_MIN = Number(params.get("conf") || 0.35);
 // When two boxes overlap more than this, keep only the stronger one (0 to 1).
 export const OVERLAP_MAX = 0.45;
 
+// ---- Sending detections to the API (#42, #43) ----
+
+// Where the API lives. Empty = same site as this page (the normal case on Vercel).
+// For testing from a laptop: ?api=https://wayneawshackathon.vercel.app
+export const API_BASE = (params.get("api") || "").replace(/\/$/, "");
+
+// Only boxes with these labels are sent. The stock COCO model has no "pothole" class,
+// so nothing is sent until the pothole model (#39) is in. To try the flow with the
+// stock model, use e.g. ?sendlabel=cup together with ?dry (see below).
+export const SEND_LABELS = params.get("sendlabel")
+  ? params.get("sendlabel").split(",")
+  : ["pothole"];
+
+// Dry run (?dry): do everything except the network calls, and show what would be sent.
+// Use this for testing so no fake potholes end up in the team database.
+export const DRY_RUN = params.has("dry");
+
+// Send at most one detection per this many milliseconds.
+export const SEND_EVERY_MS = 1000;
+
+// Do not send if the last GPS reading is older than this, or less accurate than this.
+export const GPS_MAX_AGE_MS = 30_000;
+export const GPS_MAX_ERROR_M = 100;
+
+// Uploaded frames: at most this wide, at this JPEG quality (contract: under 4 MB).
+export const UPLOAD_MAX_WIDTH = 1280;
+export const UPLOAD_JPEG_QUALITY = 0.8;
+
 // Class names for the stock COCO model (80 everyday objects). Used only while we
 // wait for the pothole model, which has a single class.
 export const COCO_LABELS = [

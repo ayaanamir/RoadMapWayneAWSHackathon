@@ -4,6 +4,26 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · #42 GPS and #43 send detections (Ado + Claude)
+
+Branch: `live/send-detections`.
+
+- New `reporter.js`: follows GPS, and after each model run sends the strongest
+  `pothole` box at most once per second: JPEG, `POST /api/upload`, then
+  `POST /api/detections` (`source: "live"`, `verdict: "unverified"`). Shapes from
+  `shared/CONTRACTS.md` v3.
+- Stats box now shows GPS accuracy, number sent, and the last result.
+- Test switches: `?dry` (send nothing, show what would be sent), `?sendlabel=` (send
+  another label, for the stock model), `?api=` (another API address).
+- Tested on laptop Chrome with a fake camera, fake GPS, and a fake API on localhost
+  (never the team API): 4 uploads + 4 detections in 5 s with the right fields;
+  "not live yet" message on 404 with the camera still running; default settings send
+  nothing with the stock model.
+- Ayaan's `/api/upload` and `/api/detections` are not live yet (404). Nothing else to
+  change on the phone side when they are.
+
+Not touched: anything outside `apps/live/`.
+
 ## 2026-11-14 · #38 and #41 done: works on iPhone 16 Safari (Ado + Claude)
 
 - Camera opens and boxes show on Ado's iPhone 16 (latest iOS, Safari).
