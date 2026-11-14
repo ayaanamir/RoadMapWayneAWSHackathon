@@ -118,8 +118,10 @@ export class Reporter {
       } else {
         const result = await postDetection(detection);
         this.sentCount += 1;
+        // The API answers right away. If it is still checking the photo with the vision
+        // model (result.verifying), the pin can show up a few seconds later.
         const pin = result.pothole_ids?.[0];
-        this.say(pin ? "On the map" : "Sent, needs 2nd sighting", "good");
+        this.say(pin ? "On the map" : result.verifying ? "Sent, checking" : "Sent", "good");
       }
     } catch (err) {
       console.error("[live] send failed:", err);

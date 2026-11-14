@@ -207,3 +207,9 @@ Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on
 - GPS row: "Blocked", "No signal", "Not available" instead of full sentences.
 - Color only where it matters: green = sent, amber = waiting for GPS or GPS too rough,
   red = not sent or location blocked, gray = practice. Everything else stays white.
+
+## "Sent, checking" message (branch live/checking-message)
+
+- After #88 the API checks live photos with the vision model after it answers, and
+  says so with `verifying: n`. The phone now shows "Sent, checking" then, instead of
+  the outdated "Sent, needs 2nd sighting". README updated to match.
