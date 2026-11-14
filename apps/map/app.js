@@ -214,7 +214,7 @@ function renderList() {
       || b.f.reports.length - a.f.reports.length
       || String(b.f.reports.at(-1)?.created_at || '').localeCompare(String(a.f.reports.at(-1)?.created_at || '')));
 
-  setPanel(`
+  setPanel(`<div class="list-view">
     <!-- Legend: what each pin color means, with counts. Click one to show only those. -->
     <div class="legend" role="group" aria-label="Pin colors">
       ${LEGEND.map(([state, name]) => `<button type="button" class="chip" data-state="${state}" aria-pressed="${filter === state}">
@@ -235,7 +235,7 @@ function renderList() {
           </span>
           ${order(p) > 0 ? `<span class="spot-tag ${esc(p.state)}">${esc(SHORT[p.state])}</span>` : ''}
         </button></li>`).join('')}
-    </ul>`);
+    </ul></div>`);
 }
 
 function renderSpot(p) {

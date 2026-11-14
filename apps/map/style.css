@@ -74,8 +74,10 @@ body { display: grid; grid-template-columns: 1fr var(--side); grid-template-rows
 .panel-head { margin-bottom: 16px; }
 .panel-title { margin: 0; font-size: 28px; font-weight: 500; line-height: 1.2; }
 .panel-sub { margin: 8px 0 0; color: var(--text); font-size: 15px; }
-/* Shown when a legend filter has no spots: centered, in a dashed box. */
-.empty-state { margin: 0; padding: 32px 16px; border: 1px dashed rgba(237, 237, 237, 0.24); border-radius: 10px; text-align: center; font-size: 15px; }
+/* List view fills the panel height, so the empty box can sit in the middle of what is left. */
+.list-view { display: flex; flex-direction: column; min-height: 100%; }
+/* Shown when a legend filter has no spots: a box in the middle of the empty space. */
+.empty-state { margin: auto 0; padding: 40px 16px; border: 1px solid rgba(237, 237, 237, 0.2); border-radius: 12px; text-align: center; font-size: 22px; font-weight: 500; }
 
 /* List of spots: one button per spot, the important ones first. */
 .spots { margin: 0 -12px; padding: 0; list-style: none; }
