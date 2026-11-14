@@ -162,3 +162,27 @@ BEGIN
                                                WHERE pothole_id IS NOT NULL) s;
   RETURN created;
 END $$;
+
+-- ---------------------------------------------------------------------------
+-- Added for model training (internal, not in shared/CONTRACTS.md): team review of
+-- teacher-labelled dash-cam frames. Served by api/labels.ts, reviewed at /label.
+-- Boxes are normalised {x,y,w,h} with a top-left origin.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS label_frames (
+  frame_id      text PRIMARY KEY,                -- crowd_<videoid>_<t_ms> (= R2 frames/<id>.jpg)
+  image_url     text NOT NULL,
+  split         text NOT NULL DEFAULT 'train' CHECK (split IN ('train','test')),
+  video_id      text NOT NULL DEFAULT '',
+  t_sec         real,
+  teacher       jsonb,                           -- {potholes:[…], lookalikes:[…], road_visible}
+  teacher_model text,
+  teacher_error text,
+  boxes         jsonb,                           -- human-reviewed potholes; [] = no pothole
+  status        text NOT NULL DEFAULT 'new' CHECK (status IN ('new','taught','reviewed','skipped')),
+  reviewed_by   text,
+  reviewed_at   timestamptz,
+  review_ms     integer,
+  lock_by       text,                            -- reviewer (or '_teacher') holding the frame
+  lock_until    timestamptz,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
