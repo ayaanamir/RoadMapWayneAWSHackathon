@@ -375,53 +375,90 @@ function setUpRecordingScreen() {
 }
 
 let filesShown = "";
-function showDriveState({ recording, elapsedMs, clips, fixes, lastFixAt, files, problem }) {
+function showDriveState({ recording, elapsedMs, recorded, clips, track, fixes, lastFixAt, problem }) {
   recBadge.hidden = !recording;
   recTime.textContent = clock(elapsedMs);
   recButton.setAttribute("aria-pressed", String(recording));
   recButton.title = recording ? "Stop recording" : "Record drive";
   document.getElementById("switch-camera").disabled = recording;
-  document.querySelectorAll("[data-rec]").forEach((el) => { el.hidden = !recording && !clips; });
+  document.querySelectorAll("[data-rec]").forEach((el) => { el.hidden = !recording && !recorded; });
   // Track: how many GPS points are logged. Amber when no new point came in for a
   // while (tunnel, lost signal), since those minutes cannot be placed on the map.
   const stale = recording && Date.now() - lastFixAt > 10_000;
-  stats.fixes.textContent = `${fixes} ${fixes === 1 ? "point" : "points"}`;
+  stats.fixes.textContent = plural(fixes, "point");
   stats.fixes.dataset.tone = stale ? "warn" : "";
-  stats.clips.textContent = `${clips} ${clips === 1 ? "clip" : "clips"}`;
+  stats.clips.textContent = plural(recorded, "clip");
   if (problem) {
     stats.message.textContent = problem;
     stats.message.dataset.tone = "bad";
     stats.message.hidden = false;
   }
 
-  // File list with Save buttons. Only rebuilt when the files change.
-  const key = files.map((f) => `${f.name}${f.url ? "" : "-"}`).join("|");
+  // The Files list: the GPS track, then one row per clip (video + its JSON together,
+  // the pipeline needs both). Only rebuilt when something in it changes.
+  const key = JSON.stringify([recording, track?.points, track?.url, clips.map((c) => [c.number, !!c.video.url])]);
   if (key === filesShown) return;
   filesShown = key;
-  filesBox.hidden = files.length === 0;
-  document.getElementById("files-count").textContent = files.length ? `(${files.length})` : "";
-  // GPS track first, then the clips. Short names: the drive's start time is the same
-  // for all of them and is in the full file name that gets saved.
-  const sorted = [...files].sort((a, b) => b.name.endsWith(".gpx") - a.name.endsWith(".gpx"));
-  filesList.replaceChildren(...sorted.map((f) => {
-    const li = document.createElement("li");
-    const name = document.createElement("span");
-    name.textContent = f.name.endsWith(".gpx") ? "GPS track (.gpx)" : f.name.replace(/^drive_\w+?Z_/, "");
-    name.title = f.name;
-    li.append(name);
-    if (f.url) {
-      const save = document.createElement("button");
-      save.type = "button";
-      save.textContent = "Save";
-      save.addEventListener("click", () => download(f));
-      li.append(save);
-    } else {
-      const gone = document.createElement("small");
-      gone.textContent = "Not kept"; // older clips are dropped from memory
-      li.append(gone);
-    }
-    return li;
-  }));
+  const rows = [];
+  if (track) {
+    rows.push(fileRow({
+      title: "GPS track",
+      meta: plural(track.points, "point"),
+      onSave: track.url && (() => download(track)),
+      onDelete: !recording && (() => drive.deleteTrack()),
+    }));
+  }
+  for (const clip of clips) {
+    rows.push(fileRow({
+      title: `Clip ${clip.number}`,
+      meta: clip.video.url ? `${clock(clip.durationMs)}, ${megabytes(clip.video.size)}` : "Cleared from memory",
+      onSave: clip.video.url && (() => { download(clip.video); download(clip.json); }),
+      onDelete: () => drive.deleteClip(clip.number),
+    }));
+  }
+  filesBox.hidden = rows.length === 0;
+  document.getElementById("files-count").textContent = rows.length ? String(rows.length) : "";
+  filesList.replaceChildren(...rows);
+}
+
+// One row in the Files list: name and details on the left, Save and delete on the right.
+function fileRow({ title, meta, onSave, onDelete }) {
+  const li = document.createElement("li");
+  const text = document.createElement("div");
+  text.className = "file-text";
+  const name = document.createElement("b");
+  name.textContent = title;
+  const info = document.createElement("small");
+  info.textContent = meta;
+  text.append(name, info);
+  li.append(text);
+  if (onSave) {
+    const save = document.createElement("button");
+    save.type = "button";
+    save.textContent = "Save";
+    save.addEventListener("click", onSave);
+    li.append(save);
+  }
+  if (onDelete) {
+    // Lucide "trash-2" icon. Removes it from this list only; saved files stay saved.
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "file-delete";
+    del.setAttribute("aria-label", `Remove ${title}`);
+    del.title = "Remove from this list";
+    del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+    del.addEventListener("click", onDelete);
+    li.append(del);
+  }
+  return li;
+}
+
+function plural(n, word) {
+  return `${n} ${n === 1 ? word : `${word}s`}`;
+}
+
+function megabytes(bytes) {
+  return `${Math.max(1, Math.round(bytes / 1_000_000))} MB`;
 }
 
 // 65000 -> "1:05", 3725000 -> "1:02:05"

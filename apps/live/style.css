@@ -277,7 +277,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 #record[aria-pressed="true"] { background: var(--rec); border-color: transparent; }
 #record[aria-pressed="true"] svg { stroke: #ffffff; }
 
-/* REC block at the top of the status box: big dot and time, then a quiet reminder. */
+/* REC block at the top of the status box: big dot and time. */
 #rec {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -297,19 +297,54 @@ button:disabled { opacity: 0.5; cursor: default; }
   animation: rec-blink 2s steps(1) infinite;
 }
 #rec b { font: 500 28px/32px var(--mono); font-variant-numeric: tabular-nums; }
-#rec small { grid-column: 1 / -1; margin-top: 4px; color: var(--text-2); font-size: 13px; }
 @keyframes rec-blink { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
 
-/* Files from the drive, folded away so there is nothing to tap while driving. */
-#files { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
+/* Files from the drive, folded away so there is nothing to tap while driving.
+   One row per file: name and details, then Save and a bin button. */
+#files { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
 #files[hidden] { display: none; }
-#files summary { cursor: pointer; color: var(--text-2); }
-#files ul { margin: 8px 0 0; padding: 0; list-style: none; max-height: 30vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
-#files li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
-#files li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 12px; }
-#files li button { padding: 2px 8px; font-size: 12px; }
-#files li small { color: var(--muted); }
+#files summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  color: var(--text-2);
+}
+#files summary::-webkit-details-marker { display: none; }
+#files summary::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-right: 1.5px solid var(--text-2);
+  border-bottom: 1.5px solid var(--text-2);
+  transform: rotate(45deg);
+  transition: transform 150ms var(--ease);
+}
+#files[open] summary::after { transform: rotate(-135deg); }
+#files-count { font: 500 13px var(--mono); color: var(--muted); }
+#files ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 30vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--raised) transparent;
+}
+#files li { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+#files li + li { border-top: 1px solid var(--line); }
+.file-text { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
+.file-text b { font-weight: 500; font-size: 14px; }
+.file-text small { color: var(--text-2); font: 400 12px/16px var(--mono); font-variant-numeric: tabular-nums; }
+#files li button { padding: 4px 10px; font-size: 13px; line-height: 20px; }
+#files .file-delete { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; }
+.file-delete svg { width: 16px; height: 16px; fill: none; stroke: var(--text-2); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.file-delete:hover svg { stroke: #f07067; }
 
 /* Plain text button on the start screen (save the last drive's GPS track). */
 .link { background: none; border: 0; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
