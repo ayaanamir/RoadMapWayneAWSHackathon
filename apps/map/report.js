@@ -77,7 +77,9 @@ function reportText(p, f) {
 function render(p) {
   const f = facts(p);
   document.title = `${p.address || p.pothole_id} · Evidence report`;
-  document.getElementById('back').href = `/?id=${encodeURIComponent(p.pothole_id)}`;
+  // Back to the map. "/" on Vercel; the file itself when testing from the repo.
+  const mapPage = location.pathname.startsWith('/apps/') ? '/apps/map/index.html' : '/';
+  document.getElementById('back').href = `${mapPage}?id=${encodeURIComponent(p.pothole_id)}`;
   const cityReport = [...f.reports].reverse().find((r) => r.photo_url) || f.reports.at(-1);
   const cityPhoto = cityReport?.photo_url;
   const issueLink = (r) => `<a href="${esc(r.issue_url)}" target="_blank" rel="noopener">Issue #${esc(r.issue_id)} ↗</a>`;

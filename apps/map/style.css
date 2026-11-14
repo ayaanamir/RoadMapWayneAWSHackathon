@@ -1,5 +1,5 @@
 /* Direction (apps/map/AGENTS.md): blunt, civic, exact. Asphalt at night, one accent:
-   road-paint yellow for "still there". Graphite neutrals, IBM Plex, 4px grid. */
+   road-paint yellow for "still there". Graphite neutrals, Geist, 4px grid. */
 :root {
   --bg-deep: #0f0f10;
   --bg: #141415;
@@ -13,8 +13,8 @@
   --unreported: #ededed;     /* white ring: ours, not the city's */
   --fixed: #4cc38a;
   --reported: #5c5c62;
-  --sans: "IBM Plex Sans", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --sans: "Geist", system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
   --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 * { box-sizing: border-box; }
@@ -31,6 +31,7 @@ body { display: flex; flex-direction: column; }
 .totals dt { font-size: 13px; }
 .totals dd { margin: 0; font: 500 22px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
 .totals .still dd, .totals .still dt { color: var(--paint); }
+.totals .still dd { font-weight: 600; }
 .source { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; white-space: nowrap; }
 .source::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--reported); }
 .source.live::before { background: var(--fixed); }
@@ -67,9 +68,11 @@ body { display: flex; flex-direction: column; }
 .spot-text { display: grid; gap: 2px; min-width: 0; }
 .spot-name { font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spot-line { font-size: 14px; }
-.spot-tag { padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
-.spot-tag.still_there { border-color: rgba(242, 194, 48, 0.5); color: var(--paint); }
-.spot-tag.fixed_confirmed { border-color: rgba(76, 195, 138, 0.5); color: var(--fixed); }
+/* Status tags: tinted fill, bold, so yellow and green read clearly on the dark panel. */
+.spot-tag { padding: 2px 8px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.spot-tag.still_there, .status.still_there { background: rgba(242, 194, 48, 0.14); color: var(--paint); }
+.spot-tag.fixed_confirmed, .status.fixed_confirmed { background: rgba(76, 195, 138, 0.14); color: var(--fixed); }
+.spot-tag.unreported, .status.unreported { background: rgba(237, 237, 237, 0.1); color: var(--text); }
 
 /* Legend at the top of the list: one chip per pin color with its count. Click to filter. */
 .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 24px; }
@@ -93,16 +96,14 @@ body { display: flex; flex-direction: column; }
 .back:focus-visible { outline: 2px solid var(--paint); }
 .spot-head { margin-bottom: 24px; }
 .place { margin: 0; font-size: 30px; font-weight: 500; line-height: 1.2; }
-.status { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 17px; color: var(--text); }
-.status.still_there { color: var(--paint); }
-.status.fixed_confirmed { color: var(--fixed); }
+.status { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 4px 12px 4px 10px; border-radius: 8px; background: var(--card); font-size: 16px; font-weight: 600; color: var(--text); }
 
 /* Headline numbers in a row of tiles. */
 /* Three tiles in a row, or a 2 x 2 grid when there are four. */
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 32px; }
 .stats.n4 { grid-template-columns: 1fr 1fr; }
 .stats .still { border-color: rgba(242, 194, 48, 0.5); }
-.stats .still dd { color: var(--paint); }
+.stats .still dd { color: var(--paint); font-weight: 600; }
 .stats div { padding: 12px 16px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
 .stats dt { font-size: 14px; }
 .stats dd { margin: 4px 0 0; font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -128,7 +129,12 @@ a.row-id:hover { text-decoration-color: var(--text); }
 .report-link { display: inline-block; margin: 0 0 16px; padding: 10px 16px; border-radius: 8px; background: var(--text); color: var(--bg-deep); font-weight: 500; text-decoration: none; transition: background-color 120ms var(--ease); }
 .report-link:hover { background: #fff; }
 .report-link:focus-visible { outline: 2px solid var(--paint); outline-offset: 2px; }
-.panel .meta { margin: 0; font-family: var(--mono); font-size: 13px; color: var(--text); opacity: 0.7; font-variant-numeric: tabular-nums; }
+/* Small facts at the very bottom: where it is (opens Google Maps) and its ID. */
+.details { display: grid; gap: 8px; margin: 8px 0 0; padding-top: 16px; border-top: 1px solid var(--line); }
+.details div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; font-size: 14px; }
+.details dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.details a { color: var(--text); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.details a:hover { text-decoration-color: var(--text); }
 
 /* Keyless fallback: OSM tiles turned into a dark, grey street map. */
 .osm-dark { filter: invert(1) hue-rotate(180deg) grayscale(0.85) brightness(0.85) contrast(0.9); }

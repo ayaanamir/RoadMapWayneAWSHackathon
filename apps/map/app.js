@@ -51,6 +51,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 const order = (p) => ({ still_there: 3, unreported: 2, fixed_confirmed: 1 }[p.state] || 0);
 
+// The report page. On Vercel it is /report; when the files are opened straight from
+// the repo (local testing) that short path does not exist, so use the file itself.
+const REPORT_PAGE = location.pathname.startsWith('/apps/') ? '/apps/map/report.html' : '/report';
+
 let live = false; // true when the data came from the API, false for the sample file
 
 async function load() {
@@ -277,8 +281,12 @@ function renderSpot(p) {
       <p><b>${esc(owner.agency.short)}</b>, ${esc(owner.kind.toLowerCase())}</p>
     </section>
 
-    <a class="report-link" href="/report?id=${encodeURIComponent(p.pothole_id)}">Evidence report and PDF</a>
-    <p class="meta">${esc(p.pothole_id)}, ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</p>`);
+    <a class="report-link" href="${REPORT_PAGE}?id=${encodeURIComponent(p.pothole_id)}">Evidence report and PDF</a>
+
+    <dl class="details">
+      <div><dt>Location</dt><dd><a href="https://www.google.com/maps?q=${p.lat.toFixed(5)},${p.lon.toFixed(5)}" target="_blank" rel="noopener">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} ↗</a></dd></div>
+      <div><dt>Spot ID</dt><dd>${esc(p.pothole_id)}</dd></div>
+    </dl>`);
 }
 
 // Clicks inside the panel: a legend chip, a spot in the list, or the back button.
