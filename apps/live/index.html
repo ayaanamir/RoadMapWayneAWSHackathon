@@ -7,10 +7,10 @@
   <title>Still There? Live</title>
   <!-- All paths start with /apps/live/ because Vercel serves this page at /live,
        where a relative path like "app.js" would point to the wrong place. -->
-  <!-- Same fonts as the map, so the phone and the map look like one product. -->
+  <!-- Geist: a crisp font made for screens. Geist Mono for numbers. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/apps/live/style.css">
   <!-- ONNX Runtime Web (runs the model) is added by detector.js once it knows which
        engine to use. Version: ORT_VERSION in config.js. -->
@@ -18,12 +18,12 @@
 </head>
 <body>
   <main>
-    <!-- The camera image and boxes are both drawn on this one canvas, so the boxes
-         always line up with the picture. -->
-    <canvas id="view" aria-label="Camera view with detected objects"></canvas>
-
-    <!-- The camera feed. Invisible: we copy its frames onto the canvas above. -->
+    <!-- The camera feed, shown as is so the phone can draw it smoothly. -->
     <video id="camera" playsinline muted></video>
+
+    <!-- A clear layer on top of the camera with only the boxes. Same size and fit as
+         the video, so the boxes line up with the picture. -->
+    <canvas id="view" aria-label="Detected potholes"></canvas>
 
     <!-- Shown on top of the camera picture while the model loads: one line of text and
          a yellow bar that fills as it goes. Also used for errors. -->
