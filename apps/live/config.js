@@ -13,10 +13,9 @@ export const ORT_CDN = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSI
 export const R2_PUBLIC_URL = "https://pub-9da122d7960d49de90da1a69cb4fe7f9.r2.dev";
 
 // Where the model file lives. Upload with apps/live/tools/upload_model.py.
-// Now: the stock COCO model, as a placeholder.
-// Next (#39): change to `${R2_PUBLIC_URL}/models/pothole.onnx`.
-// To test a local copy instead: ?model=/apps/live/model/yolo11n.onnx
-export const MODEL_URL = params.get("model") || `${R2_PUBLIC_URL}/models/yolo11n.onnx`;
+// Now: Muq's pothole model (YOLO11n, one class "pothole", #39).
+// The old stock model is still in the bucket for testing: ?model=<R2 URL>/models/yolo11n.onnx
+export const MODEL_URL = params.get("model") || `${R2_PUBLIC_URL}/models/pothole.onnx`;
 
 // Which engine runs the model: "webgpu", "wasm", or "auto" (WebGPU if the browser
 // has it, else WASM). Order of choice:

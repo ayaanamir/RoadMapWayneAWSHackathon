@@ -4,7 +4,7 @@ Matches the board issues (`python3 scripts/board.py next live`).
 
 ## M0 · Setup (by Sat 2 PM)
 - [x] #38 Camera page with stock YOLO11n (COCO) ONNX as placeholder (iPhone 16 Safari: WebGPU, ~55 ms, ~7.4 checks/s)
-- [ ] #39 Swap in pothole model: export Muq's `best.pt` to ONNX, host on R2, load from `R2_PUBLIC_URL/models/pothole.onnx` (waits on #58)
+- [x] #39 Swap in pothole model: Muq's ONNX on R2 at `models/pothole.onnx`, now the default
 
 ## M3 · Live detection (by Sun 3 AM)
 - [x] #41 Rear camera + ONNX Runtime Web (WebGPU, WASM fallback) + boxes on screen (checked on iPhone 16 Safari)
