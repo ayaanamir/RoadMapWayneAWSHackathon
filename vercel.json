@@ -15,6 +15,10 @@
     {
       "source": "/test",
       "destination": "/apps/map/test.html"
+    },
+    {
+      "source": "/label",
+      "destination": "/apps/map/label.html"
     }
   ],
   "functions": {

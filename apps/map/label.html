@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Label review · Still There</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/apps/map/label.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">Still There</div>
+    <span id="split" class="badge" hidden></span>
+    <code id="fid" class="fid"></code>
+    <span id="tnote" class="tnote"></span>
+    <div class="spacer"></div>
+    <div class="prog">
+      <div class="progtxt" id="progtxt">loading…</div>
+      <div class="track"><div id="progbar"></div></div>
+    </div>
+    <ol id="board" class="board"></ol>
+    <span id="who" class="who"></span>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <form id="nameForm" class="gate" hidden>
+    <h1>Who is reviewing?</h1>
+    <p class="muted">Your name is saved with every frame you review.</p>
+    <input id="nameInput" autocomplete="off" placeholder="Your name" maxlength="40" required>
+    <button type="submit" class="primary">Start</button>
+  </form>
+
+  <main id="stage" class="stage" hidden>
+    <div id="wrap" class="wrap">
+      <img id="img" alt="Dash-cam frame" draggable="false">
+      <div id="overlay" class="overlay"></div>
+      <div id="loading" class="loading">loading…</div>
+    </div>
+  </main>
+
+  <div id="empty" class="gate" hidden>
+    <h1>Nothing left to review</h1>
+    <p class="muted" id="emptyStats"></p>
+  </div>
+
+  <footer id="tools" class="tools" hidden>
+    <button class="primary" data-act="save"><kbd>Enter</kbd> Save &amp; next</button>
+    <button data-act="none"><kbd>N</kbd> No pothole</button>
+    <button data-act="skip"><kbd>S</kbd> Skip</button>
+    <button data-act="undo"><kbd>Z</kbd> Undo</button>
+    <button data-act="look" id="lookBtn" class="on"><kbd>L</kbd> Lookalikes</button>
+    <button data-act="help"><kbd>?</kbd> Keys</button>
+    <span id="count" class="count"></span>
+  </footer>
+
+  <div id="help" class="help" hidden>
+    <div class="card">
+      <h2>Keys</h2>
+      <p class="muted">Yellow boxes = potholes (what gets saved). Grey dashed = lookalikes the model flagged, context only.</p>
+      <dl>
+        <dt><kbd>Enter</kbd> <kbd>Space</kbd></dt><dd>Save these boxes, next frame</dd>
+        <dt><kbd>N</kbd></dt><dd>No pothole here (clears boxes), next</dd>
+        <dt><kbd>S</kbd></dt><dd>Skip: blurry, no road, unsure</dd>
+        <dt><kbd>Z</kbd></dt><dd>Undo last change</dd>
+        <dt><kbd>L</kbd></dt><dd>Show / hide lookalikes</dd>
+        <dt>drag</dt><dd>Draw a pothole box</dd>
+        <dt>click a box</dt><dd>Delete it</dd>
+      </dl>
+      <p class="muted">Press any key or click to close.</p>
+    </div>
+  </div>
+
+  <script type="module" src="/apps/map/label.js"></script>
+</body>
+</html>
