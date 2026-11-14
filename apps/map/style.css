@@ -22,7 +22,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 
 /* Page: two full-height columns. Left: top bar over the map. Right: the sidebar, from
    the very top to the bottom. (main.layout steps aside so its children join this grid.) */
-:root { --side: 440px; }
+:root { --side: 400px; }
 body { display: grid; grid-template-columns: 1fr var(--side); grid-template-rows: auto 1fr; }
 .layout { display: contents; }
 .bar { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 24px; min-height: 72px; min-width: 0; padding: 12px 24px; background: #2c2e33; border-bottom: 1px solid rgba(237, 237, 237, 0.1); }
