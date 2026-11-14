@@ -138,16 +138,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .stats-head .mark { width: 12px; height: 4px; background: var(--paint); flex-shrink: 0; }
 .stats-head b { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Small outlined tag with a dot: gray dot = Practice, yellow dot = Sending. */
+/* Small tag with a dot: gray dot = Practice, yellow dot = Sending. */
 .mode {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
   margin-left: auto;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
   color: var(--text-2);
   font: 500 12px/22px var(--sans);
 }
@@ -159,7 +156,7 @@ button:disabled { opacity: 0.5; cursor: default; }
   background: var(--muted);
 }
 .mode:empty { display: none; }
-.mode.on { color: var(--text); border-color: rgba(242, 194, 48, 0.4); }
+.mode.on { color: var(--text); }
 .mode.on::before { background: var(--paint); }
 
 /* Middle: the three things that matter while filming. */

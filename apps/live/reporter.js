@@ -21,7 +21,7 @@ export class Reporter {
     this.sending = false;      // a send is in progress
     this.lastSentAt = 0;       // when the last send started (ms)
     this.sentCount = 0;        // how many detections went through
-    this.lastMessage = DRY_RUN ? "Practice, nothing goes to the map" : "";
+    this.lastMessage = DRY_RUN ? "Practice mode" : "";
 
     // Reused canvas for making the JPEG.
     this.canvas = document.createElement("canvas");
@@ -32,7 +32,7 @@ export class Reporter {
   // iPhone Safari only asks for permission then.
   startGps() {
     if (!navigator.geolocation) {
-      this.gpsProblem = "This browser has no GPS.";
+      this.gpsProblem = "Not available";
       this.changed();
       return;
     }
@@ -43,9 +43,7 @@ export class Reporter {
         this.changed();
       },
       (err) => {
-        this.gpsProblem = err.code === err.PERMISSION_DENIED
-          ? "Location blocked. Allow it in Settings for this site."
-          : "No GPS signal yet.";
+        this.gpsProblem = err.code === err.PERMISSION_DENIED ? "Blocked" : "No signal";
         this.changed();
       },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
@@ -62,7 +60,7 @@ export class Reporter {
 
     const gps = this.usableGps();
     if (!gps) {
-      this.lastMessage = "Pothole seen, waiting for GPS";
+      this.lastMessage = "Waiting for GPS";
       this.changed();
       return;
     }
@@ -114,16 +112,16 @@ export class Reporter {
 
       if (DRY_RUN) {
         console.info("[live] dry run, would send:", detection);
-        this.lastMessage = `Would send ${box.label} ${Math.round(box.score * 100)}%`;
+        this.lastMessage = `Would send, ${Math.round(box.score * 100)}%`;
       } else {
         const result = await postDetection(detection);
         this.sentCount += 1;
         const pin = result.pothole_ids?.[0];
-        this.lastMessage = pin ? "Sent, on the map" : "Sent, shows after a 2nd sighting";
+        this.lastMessage = pin ? "On the map" : "Sent, needs 2nd sighting";
       }
     } catch (err) {
       console.error("[live] send failed:", err);
-      this.lastMessage = `Not sent: ${err.message}`;
+      this.lastMessage = `Not sent: ${shortReason(err)}`;
     } finally {
       this.sending = false;
       this.changed();
@@ -166,7 +164,7 @@ async function uploadFrame(blob, name) {
     body: blob,
   });
   const data = await readJson(res, "upload");
-  if (!data.image_url) throw new Error("upload gave no image_url");
+  if (!data.image_url) throw new Error("upload failed");
   return data.image_url;
 }
 
@@ -187,9 +185,16 @@ async function postDetection(detection) {
   return readJson(res, "detections");
 }
 
+// A few words on why a send failed, for the status box. Full error is in the console.
+function shortReason(err) {
+  if (err instanceof TypeError) return "no connection"; // fetch failed: offline or blocked
+  if (/JPEG/.test(err.message)) return "photo failed";
+  return err.message;
+}
+
 // Turn an API response into JSON, with a readable error if something is off.
 async function readJson(res, what) {
-  if (res.status === 404) throw new Error(`the ${what} API is not live yet`);
-  if (!res.ok) throw new Error(`${what} API said ${res.status}`);
+  if (res.status === 404) throw new Error("server offline");
+  if (!res.ok) throw new Error(`server error ${res.status}`);
   return res.json();
 }
