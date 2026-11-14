@@ -3,15 +3,55 @@
   "$id": "pothole.schema.json",
   "title": "Pothole",
   "type": "object",
-  "required": ["pothole_id", "lat", "lon", "address", "city_reports", "detections", "state"],
+  "required": [
+    "pothole_id",
+    "lat",
+    "lon",
+    "address",
+    "city_reports",
+    "detections",
+    "state"
+  ],
   "properties": {
-    "pothole_id": { "type": "string" },
-    "lat": { "type": "number" },
-    "lon": { "type": "number" },
-    "address": { "type": "string" },
-    "city_reports": { "type": "array", "items": { "$ref": "city_report.schema.json" } },
-    "detections": { "type": "array", "items": { "$ref": "detection.schema.json" } },
-    "state": { "enum": ["still_there", "fixed_confirmed", "reported_only", "unknown"] },
-    "last_seen_at": { "type": ["string", "null"], "format": "date-time" }
+    "pothole_id": {
+      "type": "string"
+    },
+    "lat": {
+      "type": "number"
+    },
+    "lon": {
+      "type": "number"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city_reports": {
+      "type": "array",
+      "items": {
+        "$ref": "city_report.schema.json"
+      }
+    },
+    "detections": {
+      "type": "array",
+      "items": {
+        "$ref": "detection.schema.json"
+      }
+    },
+    "state": {
+      "enum": [
+        "still_there",
+        "fixed_confirmed",
+        "reported_only",
+        "unreported",
+        "unknown"
+      ]
+    },
+    "last_seen_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
   }
 }

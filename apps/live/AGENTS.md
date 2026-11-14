@@ -13,8 +13,8 @@ Phone page served by Vercel at `/live` (HTTPS, so camera + GPS work):
 
 ## Stack
 Plain `index.html` + `app.js`, `onnxruntime-web` from a CDN. Model: export with
-`yolo export model=<weights>.pt format=onnx`, upload the `.onnx` to Vercel Blob (public),
-load it from that URL. `.onnx` files are gitignored — don't commit them.
+`yolo export model=<weights>.pt format=onnx`, upload the `.onnx` to the R2 bucket (public),
+load it from `R2_PUBLIC_URL/models/pothole.onnx`. `.onnx` files are gitignored — don't commit them.
 
 ## Done check
 Open `https://<deployment>/live` on a phone, point at a pothole photo on a laptop: a box

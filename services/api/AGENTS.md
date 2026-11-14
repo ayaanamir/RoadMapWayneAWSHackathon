@@ -6,11 +6,13 @@ Also read the root `AGENTS.md` and `shared/CONTRACTS.md` (v2).
 One file per endpoint, exactly the paths in the contract:
 `api/health.ts`, `api/potholes.ts`, `api/upload.ts`, `api/detections.ts`.
 - DB: `import { neon } from '@neondatabase/serverless'; const sql = neon(process.env.DATABASE_URL!)`
-- Images: `import { put } from '@vercel/blob'` → `put(name, body, { access: 'public' })` → return `url`.
-- `detections`: upsert on `detection_id`; nearest pothole ≤ 50 m (haversine in SQL) else new
-  pothole; recompute `state` + `last_seen_at` per the contract's state rule.
+- Images: `@aws-sdk/client-s3` `PutObjectCommand` to R2 (`endpoint: https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  `region: 'auto'`), key `frames/<name>`, return `${R2_PUBLIC_URL}/frames/<name>`.
+- `detections`: upsert on `detection_id`; nearest pothole ≤ 50 m (haversine in SQL); else a new
+  pothole only per the contract's matching rule (verdict `pothole` or a 2nd nearby detection);
+  recompute `state` (incl. `unreported`) + `last_seen_at`.
 - CORS `*` on every response (handle `OPTIONS`).
-- Deps go in the root `package.json` (`@neondatabase/serverless`, `@vercel/blob`).
+- Deps go in the root `package.json` (`@neondatabase/serverless`, `@aws-sdk/client-s3`).
 
 ## `services/api/` — scripts run locally
 - `schema.sql`: the live DDL (already applied to Neon). Keep it in sync if you change the DB.

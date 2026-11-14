@@ -88,7 +88,7 @@ You may **read** anything. You may only **write** in your own area.
 
 - Never commit secrets, AWS keys, or `.env`. Use `.env.example` for names only.
 - Never commit video, images from the drive, `.gpx` logs, or model weights. Those go
-  on the laptop that processes them (frames go to Vercel Blob via `POST /api/upload`). `.gitignore` already blocks the common ones.
+  on the laptop that processes them (frames go to R2 via `POST /api/upload`). `.gitignore` already blocks the common ones.
 
 ## 6. Keep it demo-able
 

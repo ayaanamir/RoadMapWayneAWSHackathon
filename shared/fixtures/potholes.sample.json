@@ -52,7 +52,7 @@
           "captured_at": "2026-11-14T19:40:00Z",
           "confidence": 0.81,
           "bbox": [612, 488, 140, 72],
-          "image_url": "https://example.blob.vercel-storage.com/frames/00000000-0000-4000-8000-000000000001.jpg",
+          "image_url": "https://pub-EXAMPLE.r2.dev/frames/00000000-0000-4000-8000-000000000001.jpg",
           "verdict": "pothole",
           "verdict_reason": "FAKE EXAMPLE: open hole with exposed base layer, not a sealed patch."
         }
@@ -120,7 +120,7 @@
           "captured_at": "2026-11-14T19:12:00Z",
           "confidence": 0.44,
           "bbox": [540, 510, 120, 60],
-          "image_url": "https://example.blob.vercel-storage.com/frames/00000000-0000-4000-8000-000000000002.jpg",
+          "image_url": "https://pub-EXAMPLE.r2.dev/frames/00000000-0000-4000-8000-000000000002.jpg",
           "verdict": "patch",
           "verdict_reason": "FAKE EXAMPLE: dark rectangle is fresh asphalt patch, surface is level."
         }
