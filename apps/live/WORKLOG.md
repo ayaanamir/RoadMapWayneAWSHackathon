@@ -4,6 +4,49 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · Status box and start screen restyled (Ado + Claude)
+
+Branch: `live/stats-box-polish`.
+
+- Took the map's look (apps/map/style.css) so phone and map read as one product:
+  graphite colors, road-paint yellow as the only accent, IBM Plex Sans and Mono,
+  every size on a 4px grid.
+- Status box reordered by what matters: model name and "Sending" (yellow) or
+  "Practice" at the top; In view, GPS, Sent to map in the middle; last result; speed
+  numbers in one small grey line; "Flip camera" button with "Switch engine" as a quiet
+  text button.
+- Pothole boxes on the camera picture are now road-paint yellow with a mono label.
+- Start screen: product name with the yellow stripe (as on the map), off-white button.
+- Wording: "Practice: nothing goes to the map", "Would send: ...", "On the map as ...".
+- Checked locally with a fake camera and GPS in practice mode.
+
+## 2026-11-14 · Model name in the stats box (Ado + Claude)
+
+Branch: `live/show-model-name`.
+
+- Stats box now starts with "Model": `pothole`, `stock`, or the file name, plus
+  `(dry)` when nothing is sent. Added after the phone ran the old model by mistake.
+- #46 done: Ado pointed the phone at a pothole photo and away 10+ times; it boxed the
+  pothole every time and cleared every time.
+- Heads-up: on the bus test photo (no pothole), the pothole model drew 1 "pothole" box.
+  Fine for the demo (phone sightings are "unverified" and cannot turn a pin yellow), but
+  keep the phone off dark road patches and shadows when demoing.
+
+## 2026-11-14 · #39 pothole model in (Ado + Claude)
+
+Branch: `live/pothole-model`.
+
+- Muq shared the pothole model as ONNX (YOLO11n, one class "pothole", 640x640,
+  mAP50 0.85). Checked it: valid file, output [1, 5, 8400], same format as the stock
+  model, no boxes on a blank image.
+- Uploaded to R2 as `models/pothole.onnx` with `tools/upload_model.py`. Download
+  matches the original (sha256 78550b47...).
+- `config.js` now loads it by default. The stock model stays in the bucket for testing.
+- Checked on the deployed site (dry run): loads on WebGPU, label "pothole", about
+  27 ms per check on the laptop.
+- From now on `/live` sends real detections when it sees a pothole and has GPS. Add
+  `?dry` to the link for tests that should not reach the team map.
+
 ## 2026-11-14 · #45 done: laptop webcam works (Ado + Claude)
 
 - Deployed `/live` on the MacBook in Chrome with the real FaceTime HD webcam

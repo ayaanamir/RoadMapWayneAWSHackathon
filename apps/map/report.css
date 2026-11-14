@@ -1,0 +1,85 @@
+/* Evidence report: reads like an inspection sheet. Same tokens as the map; prints on white. */
+:root {
+  --bg: #141415; --bg-deep: #0f0f10; --card: #19191b; --raised: #232325;
+  --line: rgba(237, 237, 237, 0.08); --text: #ededed; --text-2: #a1a1a6; --muted: #85858b;
+  --paint: #f2c230; --fixed: #4cc38a;
+  --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 var(--sans); }
+a { color: var(--text-2); text-underline-offset: 3px; text-decoration-color: var(--line); }
+a:hover { color: var(--text); }
+.muted { color: var(--muted); }
+.meta { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.top { display: flex; align-items: center; justify-content: space-between; max-width: 880px; margin: 0 auto; padding: 24px 32px 0; }
+button { font: 500 15px/1 var(--sans); padding: 10px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); color: var(--text); cursor: pointer; transition: background-color 120ms; }
+button:hover { background: #2c2c2f; }
+button.primary { background: var(--text); color: var(--bg-deep); border-color: transparent; }
+button.primary:hover { background: #fff; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--paint); outline-offset: 2px; }
+
+.sheet { max-width: 880px; margin: 0 auto; padding: 32px; }
+.kicker { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; color: var(--text-2); font-size: 15px; }
+.kicker::before { content: ""; width: 24px; height: 4px; background: var(--paint); }
+h1 { margin: 0; font-size: 40px; font-weight: 500; line-height: 1.15; letter-spacing: -0.01em; }
+.state { margin: 8px 0 0; font-size: 18px; color: var(--text-2); }
+.state.still_there { color: var(--paint); }
+.state.fixed_confirmed { color: var(--fixed); }
+
+.summary { margin: 32px 0; padding: 20px 24px; border-left: 4px solid var(--paint); background: var(--card); border-radius: 0 12px 12px 0; font-size: 20px; line-height: 1.5; }
+
+.facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 0 0 32px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.facts div { padding: 16px 20px; background: var(--bg); }
+.facts dt { color: var(--muted); font-size: 14px; }
+.facts dd { margin: 4px 0 0; font-size: 28px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+h2 { margin: 40px 0 16px; font-size: 20px; font-weight: 500; }
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.photos figure { margin: 0; }
+.photos img, .photos .none { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.photos .none { display: grid; place-items: center; color: var(--muted); font-size: 14px; }
+.photos figcaption { margin-top: 8px; font-size: 15px; color: var(--text-2); }
+.photos .verdict { margin-top: 4px; font-size: 15px; color: var(--text); }
+
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 14px; padding: 0 12px 8px 0; border-bottom: 1px solid var(--line); }
+td { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.when { font-family: var(--mono); font-size: 14px; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr.seen td:nth-child(2) { color: var(--paint); }
+
+.file { margin-top: 40px; padding: 24px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.file h2 { margin-top: 0; }
+.file textarea { width: 100%; min-height: 160px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-deep); color: var(--text); font: 400 15px/1.55 var(--sans); resize: vertical; }
+.file .actions { display: flex; gap: 12px; margin-top: 12px; align-items: center; }
+.file .copied { color: var(--text-2); font-size: 14px; }
+
+footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 720px) {
+  .facts { grid-template-columns: 1fr 1fr; }
+  .photos { grid-template-columns: 1fr; }
+  h1 { font-size: 30px; }
+}
+@media print {
+  :root { --bg: #fff; --bg-deep: #fff; --card: #f4f4f5; --raised: #f4f4f5; --line: rgba(0,0,0,.12); --text: #171717; --text-2: #525252; --muted: #737373; --paint: #b8860b; }
+  body { font-size: 12pt; }
+  .no-print, .file { display: none; }
+  .sheet { padding: 0; max-width: none; }
+  .summary { border-left-color: #b8860b; }
+  .photos img { break-inside: avoid; }
+}
+
+/* City issue shown as evidence where its photo would be */
+.issue-card { box-sizing: border-box; width: 100%; aspect-ratio: 4 / 3; display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px; border-radius: 8px; background: var(--card); border: 1px solid var(--line);
+  color: var(--text); text-decoration: none; }
+.issue-card:hover { border-color: var(--text-2); }
+.issue-no { font-family: var(--mono, ui-monospace, monospace); font-size: 15px; font-weight: 500; }
+.issue-status { align-self: flex-start; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--raised); color: var(--text-2); margin-bottom: 6px; }
+.issue-status.open { color: var(--paint); }
+.issue-line { font-size: 13px; color: var(--text-2); }
+.issue-addr { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.issue-more { font-size: 12px; color: var(--muted); }
+.issue-open { font-size: 12px; color: var(--paint); overflow-wrap: anywhere; }
+.photos figcaption a { color: inherit; }
