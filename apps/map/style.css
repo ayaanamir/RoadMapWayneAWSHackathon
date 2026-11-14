@@ -32,7 +32,7 @@ body { display: flex; flex-direction: column; }
 .totals dd { margin: 0; font: 500 22px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
 .totals .still dd, .totals .still dt { color: var(--paint); }
 .totals .still dd { font-weight: 600; }
-.source { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 12px; border: 1px solid rgba(237, 237, 237, 0.14); border-radius: 8px; font-size: 14px; white-space: nowrap; }
+.source { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 0; border-radius: 8px; font-size: 14px; white-space: nowrap; }
 .source::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--reported); }
 .source.live::before { background: var(--fixed); }
 .source.sample { color: var(--paint); }
