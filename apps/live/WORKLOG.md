@@ -197,3 +197,13 @@ Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on
 - Font: Geist and Geist Mono. "Practice" / "Sending" is now an outlined tag with a
   dot (gray for Practice, yellow for Sending).
 - To check on the iPhone: is the camera smooth, and is model speed the same or better.
+
+## Shorter status messages (branch live/short-messages)
+
+- Removed "Ready" under the start button and the border on the Practice/Sending tag.
+- Status box messages are now a few words: "Practice mode", "Waiting for GPS",
+  "Would send, 87%", "On the map", "Sent, needs 2nd sighting",
+  "Not sent: no connection / server offline / server error 500 / photo failed".
+- GPS row: "Blocked", "No signal", "Not available" instead of full sentences.
+- Color only where it matters: green = sent, amber = waiting for GPS or GPS too rough,
+  red = not sent or location blocked, gray = practice. Everything else stays white.
