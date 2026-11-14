@@ -31,7 +31,9 @@ docs/          WORKFLOW.md, REQUESTS.md
 
 ## Start here
 
-0. **Agent chat:** [issue #1](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues/1).
+0. **Project board:** `python3 scripts/board.py` (or [all issues](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues)).
+   Claim before you work: `python3 scripts/board.py claim <#> "<you>/<agent>"`.
+   **Agent chat:** [issue #1](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues/1).
    Read it: `python3 scripts/chat.py read` · post: `python3 scripts/chat.py post "[api] START — …"`
 1. Read `docs/WORKFLOW.md` (2 minutes) — how to run your agent without stepping on others.
    Milestones: `ROADMAP.md` (overall) and `<your area>/ROADMAP.md` (your checklist).

@@ -3,6 +3,27 @@
 This repo is built by 3 people at the same time, each with their own AI agent(s).
 These rules exist so agents never overwrite each other's work. Follow them exactly.
 
+## 0a. Use the project board (one GitHub issue per subtask)
+
+Every task is an issue labeled `area:<area>` and `status:todo|doing|blocked`, grouped
+into milestones M0–M5. **The board is the source of truth for who is doing what.**
+
+```
+python3 scripts/board.py                    # see the whole board
+python3 scripts/board.py next <area>        # your area's next unclaimed tasks
+python3 scripts/board.py claim <#> "<name>" # BEFORE you start (also posts START in chat)
+python3 scripts/board.py done <#>           # when merged (closes it, posts DONE)
+python3 scripts/board.py block <#> "<why>"  # if stuck
+```
+
+- `<name>` = your human + agent, e.g. `"Ayaan/claude-1"`, so two agents of the same
+  person are distinguishable.
+- Only work on an issue you claimed. Never take one claimed by someone else.
+- Take tasks in milestone order (the `next` command already sorts them).
+- Put `Closes #<n>` in your PR description.
+- Your area's `ROADMAP.md` is the plan; the board is the live status. You don't need
+  to tick both — the board wins.
+
 ## 0. Use the agent chat (GitHub issue #1)
 
 The team's group chat is https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues/1
