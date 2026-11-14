@@ -18,10 +18,17 @@ const LABEL = {
 const VERDICT = { pothole: 'Pothole', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not verified yet' };
 
 const map = L.map('map', { zoomControl: true, attributionControl: true }).setView(NEWLAB, 14);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  maxZoom: 19,
-  attribution: '&copy; OpenStreetMap contributors &copy; CARTO · Reports: Improve Detroit',
-}).addTo(map);
+const tiles = window.CARTO_KEY
+  ? L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${window.CARTO_KEY}`, {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO · Reports: Improve Detroit',
+    })
+  : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      className: 'osm-dark',
+      attribution: '&copy; OpenStreetMap contributors · Reports: Improve Detroit',
+    });
+tiles.addTo(map);
 
 const layer = L.layerGroup().addTo(map);
 const markers = new Map();
