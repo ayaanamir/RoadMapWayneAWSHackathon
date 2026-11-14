@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Test · Still There</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/apps/map/test.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">Still There</div>
+    <div class="title">Model test</div>
+    <div class="note">Runs locally in this browser. Nothing is uploaded or sent to the map.</div>
+  </header>
+
+  <main class="layout">
+    <aside class="side">
+      <section>
+        <h2><span class="step">1</span>Footage</h2>
+        <label class="file">
+          <input type="file" id="videoFile" accept="video/*">
+          <span id="videoName">Choose a video…</span>
+        </label>
+        <div class="row">
+          <label for="fps">Frames per second</label>
+          <select id="fps">
+            <option value="1">1</option><option value="2">2</option>
+            <option value="3" selected>3</option><option value="5">5</option>
+          </select>
+        </div>
+        <p class="muted" id="videoInfo"></p>
+      </section>
+
+      <section>
+        <h2><span class="step">2</span>Model</h2>
+        <div class="choice">
+          <label><input type="radio" name="model" value="live" checked> Live model (what /live runs)</label>
+          <label><input type="radio" name="model" value="file"> A .onnx file
+            <input type="file" id="modelFile" accept=".onnx"></label>
+        </div>
+        <div class="row">
+          <label for="crop">Send to model</label>
+          <select id="crop">
+            <option value="0" selected>Whole frame</option>
+            <option value="0.4">Bottom 60% (road)</option>
+            <option value="0.5">Bottom 50% (road)</option>
+          </select>
+        </div>
+        <button id="run" disabled>Run on all frames</button>
+        <div class="progress" hidden><div id="bar"></div></div>
+        <p class="muted" id="runInfo"></p>
+      </section>
+
+      <section>
+        <h2><span class="step">3</span>Mark the truth</h2>
+        <p class="muted">Click a frame, then press <kbd>P</kbd> if a real pothole is in it.
+          <kbd>←</kbd> <kbd>→</kbd> to move. Unmarked frames count as “no pothole”.</p>
+        <p class="count" id="labelCount">0 frames marked</p>
+      </section>
+
+      <section>
+        <h2><span class="step">4</span>Score</h2>
+        <div class="row">
+          <label for="thr">Confidence ≥ <b id="thrVal">0.35</b></label>
+          <input type="range" id="thr" min="0.05" max="0.9" step="0.05" value="0.35">
+        </div>
+        <p class="muted">/live uses 0.35.</p>
+        <div id="results"></div>
+        <div class="buttons">
+          <button id="export" class="ghost" disabled>Export JSON</button>
+          <button id="clearLabels" class="ghost">Clear marks</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="frames" id="frames">
+      <div class="empty">
+        <p class="empty-title">Load a clip to start</p>
+        <p class="muted">Pick a video, run a model, mark the frames with real potholes,
+          then move the slider to see hits, misses and false boxes. Run a second model on
+          the same frames to compare them.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="viewer" id="viewer" hidden>
+    <div class="viewer-box">
+      <canvas id="big"></canvas>
+      <div class="viewer-bar">
+        <button id="prev" class="ghost">←</button>
+        <span id="viewerInfo"></span>
+        <button id="mark">Pothole here (P)</button>
+        <button id="next" class="ghost">→</button>
+        <button id="close" class="ghost">Close (Esc)</button>
+      </div>
+    </div>
+  </div>
+
+  <video id="video" muted playsinline preload="auto" hidden></video>
+  <script type="module" src="/apps/map/test.js"></script>
+</body>
+</html>
