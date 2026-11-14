@@ -8,11 +8,19 @@
 //   another pothole/unverified detection is within 50 m (shadow/patch never create one)
 // - otherwise keep it with pothole_id = null (stored, not shown)
 // - recompute state + last_seen_at via the recompute_pothole() SQL function
-import { neon } from '@neondatabase/serverless';
+// - then, after the response is sent, ask the vision model about up to VERIFY_MAX
+//   `unverified` detections that have a real image; store its verdict and re-match
+//   (so a confirmed live sighting can create a pin / turn one red). Off if
+//   OPENROUTER_API_KEY / OPENROUTER_MODEL are unset or VERIFY_ON_SERVER=0.
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import { json, preflight } from './_lib/http';
+import { waitUntil } from '@vercel/functions';
 import { parseDetectionsBody, type Detection } from './_lib/detection';
+import { verifyImage } from './_lib/verify';
 
 const MATCH_M = 50;
+const VERIFY_MAX = 10; // vision checks per request
+const VERIFY_PARALLEL = 3;
 const ADDRESS_M = 100; // borrow the nearest city report's address for new potholes
 
 // Haversine in metres between row aliases a and b, with a cheap bbox prefilter
@@ -23,7 +31,7 @@ const dist = (a: string, b: string) =>
 const near = (a: string, b: string, m: number) =>
   `abs(${a}.lat - ${b}.lat) < 0.001 AND abs(${a}.lon - ${b}.lon) < 0.001 AND ${dist(a, b)} <= ${m}`;
 
-type Sql = ReturnType<typeof neon>;
+type Sql = NeonQueryFunction<false, false>;
 type Row = Record<string, any>;
 
 async function ingest(sql: Sql, dets: Detection[]) {
@@ -45,6 +53,11 @@ async function ingest(sql: Sql, dets: Detection[]) {
     [JSON.stringify(dets)],
   );
 
+  return place(sql, ids);
+}
+
+/** Steps 2–4: match unassigned detections to potholes, create new ones, recompute state. */
+async function place(sql: Sql, ids: string[]) {
   // 2. Attach every unassigned one to its nearest existing pothole ≤ 50 m.
   await sql.query(
     `UPDATE detections d SET pothole_id = m.pothole_id
@@ -127,12 +140,72 @@ export async function POST(request: Request): Promise<Response> {
   if (typeof dets === 'string') return json({ ok: false, error: dets }, 400);
 
   if (!process.env.DATABASE_URL) return json({ ok: false, error: 'DATABASE_URL not set' }, 503);
+  const sql = neon(process.env.DATABASE_URL);
+  let result;
   try {
-    return json(await ingest(neon(process.env.DATABASE_URL), dets));
+    result = await ingest(sql, dets);
   } catch (err) {
     console.error('detections: failed', err);
     return json({ ok: false, error: 'database error, safe to retry' }, 503);
   }
+
+  const toCheck = verifiable(dets);
+  if (toCheck.length) {
+    // ?verify=wait finishes the check before answering (tests, or a producer that wants it).
+    const job = verifyAndPlace(sql, toCheck);
+    if (new URL(request.url).searchParams.get('verify') === 'wait') {
+      return json({ ...result, verified: await job });
+    }
+    waitUntil(job);
+  }
+  return json({ ...result, verifying: toCheck.length });
+}
+
+/** Unverified detections with a real image, newest first, capped at VERIFY_MAX. */
+export function verifiable(dets: Detection[]): Detection[] {
+  const { OPENROUTER_API_KEY, OPENROUTER_MODEL, VERIFY_ON_SERVER } = process.env;
+  if (!OPENROUTER_API_KEY || !OPENROUTER_MODEL || VERIFY_ON_SERVER === '0') return [];
+  return dets
+    .filter((d) => d.verdict === 'unverified' && /^https:\/\//.test(d.image_url) && !d.image_url.includes('.invalid/'))
+    .sort((a, b) => b.captured_at.localeCompare(a.captured_at))
+    .slice(0, VERIFY_MAX);
+}
+
+/** Vision-check each detection, store the verdict (only if still unverified), re-match. */
+export async function verifyAndPlace(sql: Sql, dets: Detection[]) {
+  const opts = {
+    apiKey: process.env.OPENROUTER_API_KEY!,
+    model: process.env.OPENROUTER_MODEL!,
+    baseUrl: process.env.OPENROUTER_BASE_URL || undefined,
+  };
+  const done: { detection_id: string; verdict: string | null }[] = [];
+  const queue = [...dets];
+  async function worker() {
+    for (let d = queue.shift(); d; d = queue.shift()) {
+      const checked = await verifyImage(d.image_url, d.bbox, opts);
+      if (!checked) {
+        done.push({ detection_id: d.detection_id, verdict: null });
+        continue;
+      }
+      try {
+        await sql.query(
+          `UPDATE detections SET verdict = $2, verdict_reason = $3
+            WHERE detection_id = $1 AND verdict = 'unverified'`,
+          [d.detection_id, checked.verdict, checked.reason],
+        );
+        // Re-match: a confirmed pothole may now create one; state may flip either way.
+        const { results } = await place(sql, [d.detection_id]);
+        const pid = results[0]?.pothole_id;
+        if (pid) await sql.query(`SELECT recompute_pothole($1)`, [pid]);
+        done.push({ detection_id: d.detection_id, verdict: checked.verdict });
+      } catch (err) {
+        console.error('verify: store failed', d.detection_id, err);
+        done.push({ detection_id: d.detection_id, verdict: null });
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: VERIFY_PARALLEL }, worker));
+  return done;
 }
 
 export function OPTIONS(): Response {

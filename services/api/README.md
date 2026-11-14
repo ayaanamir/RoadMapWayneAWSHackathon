@@ -12,6 +12,13 @@ _Owner fills this in as it's built:_
 - State rule lives in SQL: `recompute_pothole()` in `schema.sql`, used by `POST /api/detections`
   and at the end of `ingest_city.py`. (`group_city_reports()` is an SQL-only regroup, not used by the script.)
 
+## Server-side vision check
+`POST /api/detections` answers right away, then (via `waitUntil`) sends up to 10 `unverified`
+detections with a real `https` image to OpenRouter (`OPENROUTER_API_KEY` + `OPENROUTER_MODEL`,
+prompt in `api/_lib/verify.ts`), stores `pothole|patch|shadow` + a one-line reason, and re-matches.
+A producer's own verdict is never overwritten. `?verify=wait` waits for it; `VERIFY_ON_SERVER=0` turns it off.
+Failures leave the detection `unverified` (look for `verify:` in the Vercel logs).
+
 ## Test locally (no Vercel deploy)
 - Unit: `node --test services/api/tests/*.test.ts`
 - End to end, every handler against a **Neon branch** (it writes `smoke-*` detections):
