@@ -11,6 +11,10 @@
     {
       "source": "/report",
       "destination": "/apps/map/report.html"
+    },
+    {
+      "source": "/test",
+      "destination": "/apps/map/test.html"
     }
   ],
   "functions": {
