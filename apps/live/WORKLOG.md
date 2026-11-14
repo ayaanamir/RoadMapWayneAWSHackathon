@@ -4,6 +4,13 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · #45 done: laptop webcam works (Ado + Claude)
+
+- Deployed `/live` on the MacBook in Chrome with the real FaceTime HD webcam
+  (1280x720): WebGPU, about 95 to 111 ms per check, 7.4 to 8.8 checks per second.
+  Boxes drawn (found "person"). GPS ±40 m from Wi-Fi location.
+- This is the demo fallback if the phone has trouble. Recheck before the demo.
+
 ## 2026-11-14 · #42 GPS and #43 send detections (Ado + Claude)
 
 Branch: `live/send-detections`.

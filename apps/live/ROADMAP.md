@@ -11,7 +11,7 @@ Matches the board issues (`python3 scripts/board.py next live`).
 - [x] #42 GPS via `navigator.geolocation`; at most 1 detection per second (built, tested with fake GPS)
 - [ ] #43 Upload frame via `POST /api/upload`, then `POST /api/detections` (`source: "live"`) (built, tested on a fake API; waits on Ayaan's real endpoints)
 - [ ] #44 Served by Vercel at `/live` (HTTPS); URL in chat
-- [ ] #45 Fallback: laptop webcam works too (works on laptop Chrome, recheck before demo)
+- [x] #45 Fallback: laptop webcam works too (checked on the deployed site with the MacBook webcam)
 
 ## M4 · Demo-ready (by Sun 8 AM)
 - [ ] #46 Works pointed at a pothole photo on a laptop screen, 5 times in a row
