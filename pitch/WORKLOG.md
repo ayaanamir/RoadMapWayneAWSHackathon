@@ -48,3 +48,12 @@ Not touched: anything outside `pitch/`. This script is separate from Backbone's 
 ingest (`services/api/`) and does not replace it.
 
 Next in this area: #49 `DEMO.md`, best done once the map (#15 to #18) exists.
+
+## Demo plan after the server vision check (branch pitch/demo-vision-check)
+
+- Ayaan's PR #88: every phone sighting is now checked by the vision model on the server.
+  "Pothole" makes a pin on its own; "shadow" or "patch" never does.
+- `DEMO.md`: new pin within about 10 s (not 5), one extra line while it checks, what color
+  to expect (white ring at Newlab, yellow only next to a closed city report), new
+  rehearsal check that a photo on a screen gets "pothole", new fallback line.
+- `SCRIPT.md`: the phone line and step 3 now say the vision model checks phone sightings too.

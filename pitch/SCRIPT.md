@@ -36,7 +36,8 @@ _Map on the projector. Peterboro pin is yellow. Click path: `DEMO.md`._
 >
 > _Phone in hand, point it at a pothole photo on the laptop._
 > And anyone can add to it. This is a phone in a web page, no app to install.
-> It spots the pothole, grabs the location, and _(pin appears)_ there it is on the map.
+> It spots the pothole and grabs the location. Before it goes on the map, the vision model
+> checks the photo, so a shadow never makes a pin. _(pin appears)_ There it is on the map.
 
 ## 3. How it works (about 40 s)
 
@@ -48,7 +49,8 @@ _Map on the projector. Peterboro pin is yellow. Click path: `DEMO.md`._
 > Two: we look at the road. A small detection model runs right on the phone, so it keeps
 > up with a moving car and works on a weak signal.
 >
-> Three: a bigger vision model double checks every hit. The small model is fast, but it
+> Three: a bigger vision model double checks every hit, from the car and from the phone.
+> The small model is fast, but it
 > mixes up potholes with shadows and patched asphalt. The big one makes that call and
 > writes one sentence on why, so a person can trust the result.
 
