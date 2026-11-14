@@ -14,11 +14,12 @@
   <header class="bar">
     <div class="brand">Still There</div>
     <div class="summary" id="summary">Loading city reports</div>
+    <!-- One entry per pin color, with how many pins have it. Counts filled in by app.js. -->
     <ul class="legend" aria-label="Legend">
-      <li><span class="dot still_there"></span>Still there after closing</li>
-      <li><span class="dot unreported"></span>Never reported</li>
-      <li><span class="dot fixed_confirmed"></span>Fixed</li>
-      <li><span class="dot reported_only"></span>Not checked yet</li>
+      <li><span class="dot still_there"></span>Still there<b id="n-still_there">0</b></li>
+      <li><span class="dot unreported"></span>Not reported<b id="n-unreported">0</b></li>
+      <li><span class="dot fixed_confirmed"></span>Fixed<b id="n-fixed_confirmed">0</b></li>
+      <li><span class="dot reported_only"></span>Not checked yet<b id="n-reported_only">0</b></li>
     </ul>
   </header>
   <main class="layout">
@@ -26,12 +27,19 @@
     <aside class="panel" id="panel" aria-live="polite">
       <div class="empty">
         <p class="empty-title">Pick a pin</p>
-        <p class="muted">Every pin is a pothole the city has on file in Corktown, Midtown and Southwest Detroit. Yellow ones are still there after the city marked them fixed.</p>
+        <p class="muted">Each pin is a pothole spot in Corktown, Midtown and Southwest Detroit, from the city's own reports and our cameras.</p>
+        <ul class="key">
+          <li><span class="dot still_there"></span><span><b>Still there.</b> The city closed the report, and our camera saw the pothole after that.</span></li>
+          <li><span class="dot unreported"></span><span><b>Not reported.</b> Our camera found it. The city has no report.</span></li>
+          <li><span class="dot fixed_confirmed"></span><span><b>Fixed.</b> Our camera saw the patch.</span></li>
+          <li><span class="dot reported_only"></span><span><b>Not checked yet.</b> City reports only. We have not driven past.</span></li>
+        </ul>
       </div>
     </aside>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
   <script src="/api/config"></script>
+  <script src="/apps/map/agency.js"></script>
   <script src="/apps/map/app.js"></script>
 </body>
 </html>
