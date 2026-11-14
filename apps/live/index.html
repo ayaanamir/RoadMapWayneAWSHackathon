@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <title>Still There? Live</title>
+  <!-- All paths start with /apps/live/ because Vercel serves this page at /live,
+       where a relative path like "app.js" would point to the wrong place. -->
+  <link rel="stylesheet" href="/apps/live/style.css">
+  <!-- ONNX Runtime Web: runs the model in the browser. This build supports both
+       WebGPU and WASM. Keep the version in sync with ORT_VERSION in config.js. -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.min.js"></script>
+  <script type="module" src="/apps/live/app.js"></script>
+</head>
+<body>
+  <main>
+    <!-- The camera image and boxes are both drawn on this one canvas, so the boxes
+         always line up with the picture. -->
+    <canvas id="view" aria-label="Camera view with detected objects"></canvas>
+
+    <!-- Shown until the camera starts. Browsers need a tap before using the camera. -->
+    <section id="start-screen">
+      <h1>Still There?</h1>
+      <p>Point your camera at the road. Potholes get a box.</p>
+      <button id="start" type="button">Start camera</button>
+      <p id="status" role="status">Ready.</p>
+    </section>
+
+    <!-- Speed numbers, so we can compare phones and browsers. -->
+    <aside id="stats" hidden>
+      <div><span>Engine</span><b id="stat-backend">-</b></div>
+      <div><span>Model ms</span><b id="stat-ms">-</b></div>
+      <div><span>Checks/s</span><b id="stat-fps">-</b></div>
+      <div><span>Found</span><b id="stat-count">-</b></div>
+      <div class="actions">
+        <button id="switch-backend" type="button">Switch engine</button>
+        <button id="switch-camera" type="button">Flip camera</button>
+      </div>
+    </aside>
+  </main>
+</body>
+</html>
