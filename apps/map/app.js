@@ -5,17 +5,19 @@ const STYLE = {
   still_there:     { color: '#f2c230', fillColor: '#f2c230', fillOpacity: 1, weight: 0, radius: 9 },
   unreported:      { color: '#ededed', fillColor: '#141415', fillOpacity: 1, weight: 3, radius: 8 },
   fixed_confirmed: { color: '#4cc38a', fillColor: '#4cc38a', fillOpacity: 1, weight: 0, radius: 7 },
-  reported_only:   { color: '#5c5c62', fillColor: '#5c5c62', fillOpacity: 0.9, weight: 0, radius: 5 },
-  unknown:         { color: '#5c5c62', fillColor: '#5c5c62', fillOpacity: 0.9, weight: 0, radius: 5 },
+  // Gray pins get a dark edge so they stand out from the dark streets.
+  reported_only:   { color: '#0f0f10', fillColor: '#8e8e94', fillOpacity: 1, weight: 1.5, radius: 6 },
+  unknown:         { color: '#0f0f10', fillColor: '#8e8e94', fillOpacity: 1, weight: 1.5, radius: 6 },
 };
+// Same wording as the evidence report (report.js), so a state reads the same everywhere.
 const LABEL = {
-  still_there: 'Seen after the city closed it',
-  unreported: 'Seen by us, never reported',
-  fixed_confirmed: 'Confirmed fixed',
-  reported_only: 'City report only, not checked yet',
+  still_there: 'Still there after the city closed it',
+  unreported: 'Seen by us, not reported to the city',
+  fixed_confirmed: 'Fixed, checked by us',
+  reported_only: 'City report, not checked yet',
   unknown: 'Not enough evidence yet',
 };
-const VERDICT = { pothole: 'Pothole', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not verified yet' };
+const VERDICT = { pothole: 'Pothole', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not checked yet' };
 
 const map = L.map('map', { zoomControl: true, attributionControl: true }).setView(NEWLAB, 14);
 const tiles = window.CARTO_KEY
@@ -91,12 +93,14 @@ function draw() {
   }
   for (const [id, m] of markers) if (!seen.has(id)) { layer.removeLayer(m); markers.delete(id); }
 
-  const still = potholes.filter((p) => p.state === 'still_there').length;
-  const unrep = potholes.filter((p) => p.state === 'unreported').length;
+  // Header: totals in one short line, and a count next to each legend color.
   const reports = potholes.reduce((n, p) => n + p.city_reports.length, 0);
   document.getElementById('summary').innerHTML =
-    `<b>${potholes.length}</b> potholes from <b>${reports}</b> city reports · ` +
-    `<b>${still}</b> still there after closing · <b>${unrep}</b> never reported`;
+    `<b>${potholes.length}</b> spots, <b>${reports}</b> city reports`;
+  for (const state of ['still_there', 'unreported', 'fixed_confirmed', 'reported_only']) {
+    const n = potholes.filter((p) => p.state === state || (state === 'reported_only' && p.state === 'unknown')).length;
+    document.getElementById(`n-${state}`).textContent = n;
+  }
 
   if (!fitted && potholes.length) {
     fitted = true;
@@ -125,7 +129,7 @@ function renderPanel(p) {
   }
   for (const d of p.detections) {
     events.push({ at: d.captured_at, cls: d.verdict === 'patch' ? 'patch' : d.verdict === 'pothole' ? 'seen' : 'report',
-      what: d.source === 'live' ? 'Seen by the phone camera' : 'Seen on our drive',
+      what: d.source === 'live' ? 'Seen by our phone camera' : 'Seen by our dash camera',
       why: `${esc(VERDICT[d.verdict] || d.verdict)}${d.verdict_reason ? ' · ' + esc(d.verdict_reason) : ''}`, time: true });
   }
   events.sort((a, b) => new Date(a.at) - new Date(b.at));
@@ -139,16 +143,17 @@ function renderPanel(p) {
       <figure>${cityReport?.photo_url
           ? `<img src="${esc(cityReport.photo_url)}" alt="City report photo" onerror="this.outerHTML='<div class=none>Photo unavailable</div>'">`
           : cityReport ? issueCard(cityReport, p.city_reports.length) : '<div class="none">Never reported to the city</div>'}
-        <figcaption>${cityReport ? `City report · ${issueLink(cityReport)}` : 'City report'}</figcaption></figure>
-      <figure>${ourFrame ? `<img src="${esc(ourFrame.image_url)}" alt="Our latest frame" onerror="this.outerHTML='<div class=none>Frame unavailable</div>'">` : '<div class="none">Not driven yet</div>'}
-        <figcaption>${ourFrame ? 'Ours, ' + esc(fmtTime(ourFrame.captured_at)) : 'Our footage'}</figcaption>
+        <figcaption>${cityReport?.photo_url ? `City report photo, ${issueLink(cityReport)}` : 'City report'}</figcaption></figure>
+      <figure>${ourFrame ? `<img src="${esc(ourFrame.image_url)}" alt="Our latest frame" onerror="this.outerHTML='<div class=none>Frame unavailable</div>'">` : '<div class="none">Not seen by our cameras yet</div>'}
+        <figcaption>${ourFrame ? 'Our camera, ' + esc(fmtTime(ourFrame.captured_at)) : 'Our camera'}</figcaption>
         ${ourFrame ? `<div class="verdict">${esc(VERDICT[ourFrame.verdict] || ourFrame.verdict)}${ourFrame.verdict_reason ? '. ' + esc(ourFrame.verdict_reason) : ''}</div>` : ''}</figure>
     </div>` : '';
 
   document.getElementById('panel').innerHTML = `
     <h1 class="place">${esc(p.address || 'Unnamed spot')}</h1>
     <div class="status ${esc(p.state)}"><span class="dot ${esc(p.state)}"></span>${esc(LABEL[p.state] || p.state)}</div>
-    <a class="report-link" href="/report?id=${encodeURIComponent(p.pothole_id)}">Evidence report</a>
+    <p class="owner">Road owner: <b>${esc(roadOwner(p.address).agency.short)}</b>${roadOwner(p.address).route ? `, ${esc(roadOwner(p.address).route)}` : ''}</p>
+    <a class="report-link" href="/report?id=${encodeURIComponent(p.pothole_id)}">Open evidence report</a>
     ${photos}
     <ol class="timeline">
       ${events.map((e) => `<li class="${e.cls}">
@@ -156,7 +161,7 @@ function renderPanel(p) {
         <div class="what">${e.what}</div>
         <div class="why">${e.why}</div></li>`).join('')}
     </ol>
-    <p class="meta">${esc(p.pothole_id)} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</p>`;
+    <p class="meta">${esc(p.pothole_id)}, ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</p>`;
 }
 
 async function tick() {

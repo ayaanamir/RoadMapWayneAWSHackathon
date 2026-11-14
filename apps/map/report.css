@@ -21,6 +21,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--paint); outline
 
 .sheet { max-width: 880px; margin: 0 auto; padding: 32px; }
 .kicker { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; color: var(--text-2); font-size: 15px; }
+.kicker .meta { margin-left: auto; }
 .kicker::before { content: ""; width: 24px; height: 4px; background: var(--paint); }
 h1 { margin: 0; font-size: 40px; font-weight: 500; line-height: 1.15; letter-spacing: -0.01em; }
 .state { margin: 8px 0 0; font-size: 18px; color: var(--text-2); }
@@ -48,26 +49,49 @@ td { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); vertical-a
 td.when { font-family: var(--mono); font-size: 14px; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 tr.seen td:nth-child(2) { color: var(--paint); }
 
-.file { margin-top: 40px; padding: 24px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
-.file h2 { margin-top: 0; }
-.file textarea { width: 100%; min-height: 160px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-deep); color: var(--text); font: 400 15px/1.55 var(--sans); resize: vertical; }
-.file .actions { display: flex; gap: 12px; margin-top: 12px; align-items: center; }
-.file .copied { color: var(--text-2); font-size: 14px; }
+/* Send to the road owner: who, why, the message, and a demo send button. */
+.send { margin-top: 40px; padding: 24px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.send h2 { margin-top: 0; }
+.route { display: grid; gap: 8px; margin: 0 0 20px; }
+.route div { display: grid; grid-template-columns: 96px 1fr; gap: 16px; }
+.route dt { color: var(--muted); font-size: 15px; }
+.route dd { margin: 0; }
+.message-label { margin: 0 0 8px; color: var(--muted); font-size: 15px; }
+.send textarea { width: 100%; min-height: 160px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-deep); color: var(--text); font: 400 15px/1.55 var(--sans); resize: vertical; }
+.message-print { display: none; }
+.send .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; align-items: center; }
+.sent { margin: 12px 0 0; color: var(--text); font-size: 15px; }
+.demo-note { margin: 16px 0 0; color: var(--muted); font-size: 14px; }
 
-footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+footer { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 48px; color: var(--muted); font-size: 13px; }
 
 @media (max-width: 720px) {
   .facts { grid-template-columns: 1fr 1fr; }
   .photos { grid-template-columns: 1fr; }
   h1 { font-size: 30px; }
 }
+/* PDF: white paper, one column of facts, no buttons. The message prints as plain text. */
 @media print {
-  :root { --bg: #fff; --bg-deep: #fff; --card: #f4f4f5; --raised: #f4f4f5; --line: rgba(0,0,0,.12); --text: #171717; --text-2: #525252; --muted: #737373; --paint: #b8860b; }
-  body { font-size: 12pt; }
-  .no-print, .file { display: none; }
+  @page { size: letter; margin: 14mm; }
+  :root { --bg: #fff; --bg-deep: #fff; --card: #f6f6f7; --raised: #ededef; --line: rgba(0,0,0,.14); --text: #171717; --text-2: #4a4a4f; --muted: #6b6b70; --paint: #a67c00; }
+  body { font-size: 10.5pt; line-height: 1.45; }
+  .no-print, .send textarea, .message-label { display: none !important; }
   .sheet { padding: 0; max-width: none; }
-  .summary { border-left-color: #b8860b; }
-  .photos img { break-inside: avoid; }
+  h1 { font-size: 24pt; }
+  h2 { margin: 18pt 0 8pt; font-size: 13pt; }
+  .kicker::before { background: #a67c00; }
+  .summary { margin: 14pt 0; padding: 10pt 14pt; font-size: 12pt; border-left-color: #a67c00; }
+  .facts { margin-bottom: 14pt; }
+  .facts div { padding: 8pt 12pt; }
+  .facts dd { font-size: 18pt; }
+  .photos { gap: 10pt; }
+  .photos img, .photos .none, .issue-card { aspect-ratio: 16 / 10; }
+  .photos, .send, table tr { break-inside: avoid; }
+  td { padding: 6pt 8pt 6pt 0; }
+  .send { margin-top: 18pt; padding: 12pt 14pt; }
+  .message-print { display: block; margin: 8pt 0 0; padding: 10pt 12pt; border: 1px solid var(--line); border-radius: 6pt; white-space: pre-wrap; font: 400 10pt/1.5 var(--mono); }
+  .demo-note { margin-top: 8pt; font-size: 9pt; }
+  footer { margin-top: 18pt; font-size: 9pt; }
 }
 
 /* City issue shown as evidence where its photo would be */

@@ -3,11 +3,12 @@ const id = new URLSearchParams(location.search).get('id');
 const sheet = document.getElementById('sheet');
 const CITY_REPORT_PAGE = 'https://detroitmi.gov/how-do-i/report';
 const VERDICT = { pothole: 'Pothole confirmed', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not verified yet' };
+// Same wording as the map panel (app.js), so a state reads the same everywhere.
 const LABEL = {
   still_there: 'Still there after the city closed it',
-  unreported: 'Seen by us, never reported to the city',
-  fixed_confirmed: 'Confirmed fixed',
-  reported_only: 'City reports only, not checked yet',
+  unreported: 'Seen by us, not reported to the city',
+  fixed_confirmed: 'Fixed, checked by us',
+  reported_only: 'City report, not checked yet',
   unknown: 'Not enough evidence yet',
 };
 
@@ -55,7 +56,7 @@ function summary(p, f) {
   return parts.join(' ');
 }
 
-// Copy-ready text for Improve Detroit (#60). The person files it; we never auto-submit.
+// Message for the road owner (#60). Shown on the page and in the PDF. Never sent.
 function reportText(p, f) {
   const loc = `${p.address || 'Unknown address'} (${p.lat.toFixed(5)}, ${p.lon.toFixed(5)})`;
   const lines = [];
@@ -101,16 +102,17 @@ function render(p) {
   }
   for (const d of f.dets) {
     rows.push({ at: d.captured_at, cls: d.verdict === 'pothole' ? 'seen' : '',
-      what: `${d.source === 'live' ? 'Phone camera' : 'Drive camera'}: ${esc(VERDICT[d.verdict] || d.verdict)}`,
+      what: `${d.source === 'live' ? 'Phone camera' : 'Dash camera'}: ${esc(VERDICT[d.verdict] || d.verdict)}`,
       detail: esc(d.verdict_reason || `Detector confidence ${Math.round(d.confidence * 100)}%`) });
   }
   rows.sort((a, b) => new Date(a.at) - new Date(b.at));
 
+  const owner = roadOwner(p.address);
   const sinceClose = f.lastClose && f.latestHit && p.state === 'still_there' ? daysBetween(f.lastClose, f.latestHit.captured_at) : null;
   const text = reportText(p, f);
 
   sheet.innerHTML = `
-    <p class="kicker">Evidence report · ${esc(date(new Date().toISOString()))}</p>
+    <p class="kicker"><span>Still There evidence report</span><span class="meta">${esc(date(new Date().toISOString()))}</span></p>
     <h1>${esc(p.address || 'Unnamed spot')}</h1>
     <p class="state ${esc(p.state)}">${esc(LABEL[p.state] || p.state)}</p>
     <p class="summary">${esc(summary(p, f))}</p>
@@ -122,9 +124,9 @@ function render(p) {
     </dl>
     <h2>The city's record and ours</h2>
     <div class="photos">
-      <figure>${cityPhoto ? img(cityPhoto, 'City report photo', '') : cityReport ? issueCard(cityReport) : '<div class="none">Never reported to the city</div>'}<figcaption>${cityReport ? `From the city report · ${issueLink(cityReport)}` : 'From the city report'}</figcaption></figure>
-      <figure>${img(ours?.image_url, 'Our frame', 'Not driven yet')}
-        <figcaption>${ours ? `Ours, ${esc(when(ours.captured_at))}` : 'Our camera'}</figcaption>
+      <figure>${cityPhoto ? img(cityPhoto, 'City report photo', '') : cityReport ? issueCard(cityReport) : '<div class="none">Never reported to the city</div>'}<figcaption>${cityPhoto ? `City report photo, ${issueLink(cityReport)}` : 'City report'}</figcaption></figure>
+      <figure>${img(ours?.image_url, 'Our camera frame', 'Not seen by our cameras yet')}
+        <figcaption>${ours ? `Our camera, ${esc(when(ours.captured_at))}` : 'Our camera'}</figcaption>
         ${ours ? `<div class="verdict">${esc(VERDICT[ours.verdict] || ours.verdict)}${ours.verdict_reason ? `. ${esc(ours.verdict_reason)}` : ''}</div>` : ''}
       </figure>
     </div>
@@ -133,22 +135,42 @@ function render(p) {
       <thead><tr><th>When</th><th>What</th><th>Detail</th></tr></thead>
       <tbody>${rows.map((r) => `<tr class="${r.cls || ''}"><td class="when">${esc(when(r.at))}</td><td>${r.what}</td><td>${r.detail}</td></tr>`).join('')}</tbody>
     </table>
-    <section class="file">
-      <h2>File a report</h2>
-      <p class="muted">Copy this, then paste it into a new Improve Detroit request. Nothing is sent for you.</p>
+    <section class="send">
+      <h2>Send to the road owner</h2>
+      <dl class="route">
+        <div><dt>To</dt><dd>${esc(owner.agency.name)}</dd></div>
+        <div><dt>Why them</dt><dd>${esc(owner.reason)}</dd></div>
+        <div><dt>Through</dt><dd>${esc(owner.agency.via)}</dd></div>
+      </dl>
+      <p class="message-label">Message</p>
       <textarea id="report-text" readonly>${esc(text)}</textarea>
-      <div class="actions">
-        <button type="button" class="primary" id="copy">Copy text</button>
-        <a href="${CITY_REPORT_PAGE}" target="_blank" rel="noopener">Open Improve Detroit</a>
-        <span class="copied" id="copied" aria-live="polite"></span>
+      <pre class="message-print">${esc(text)}</pre>
+      <div class="actions no-print">
+        <button type="button" class="primary" id="send">Send to ${esc(owner.agency.short)}</button>
+        <button type="button" id="copy">Copy text</button>
+        ${owner.key === 'city' ? `<a href="${CITY_REPORT_PAGE}" target="_blank" rel="noopener">Open Improve Detroit</a>` : ''}
       </div>
+      <p class="sent no-print" id="sent" role="status" hidden></p>
+      <p class="demo-note">Demo: the road owner is picked from the street name. Nothing is sent.</p>
     </section>
-    <footer class="meta">${esc(p.pothole_id)} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} · City data: Improve Detroit · Our data: Still There camera passes</footer>`;
+    <footer class="meta">
+      <span>${esc(p.pothole_id)}</span>
+      <span>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</span>
+      <span>City data: Improve Detroit</span>
+      <span>Our data: Still There cameras</span>
+    </footer>`;
 
+  const sent = document.getElementById('sent');
   document.getElementById('copy').onclick = async () => {
     const ta = document.getElementById('report-text');
     try { await navigator.clipboard.writeText(ta.value); } catch { ta.select(); document.execCommand('copy'); }
-    document.getElementById('copied').textContent = 'Copied';
+    sent.hidden = false;
+    sent.textContent = 'Copied';
+  };
+  // Mock send: only shows what would happen. No network call.
+  document.getElementById('send').onclick = () => {
+    sent.hidden = false;
+    sent.textContent = `Demo only, not sent. A real version would file this with ${owner.agency.short} through ${owner.agency.via}.`;
   };
 }
 
