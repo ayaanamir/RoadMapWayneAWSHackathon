@@ -45,7 +45,7 @@ def main():
         os.makedirs(os.path.join(d, "labels"), exist_ok=True)
         ip = os.path.join(d, "images", fr["frame_id"] + ".jpg")
         if not os.path.exists(ip):
-            with urllib.request.urlopen(fr["image_url"], timeout=60) as r, open(ip + ".part", "wb") as f:
+            with urllib.request.urlopen(urllib.request.Request(fr["image_url"], headers={"User-Agent": "Mozilla/5.0 (still-there autolabel)"}), timeout=60) as r, open(ip + ".part", "wb") as f:
                 f.write(r.read())
             os.replace(ip + ".part", ip)
         lines = [l for l in (yolo_line(b) for b in (fr.get("boxes") or [])) if l]
