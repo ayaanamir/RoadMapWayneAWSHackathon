@@ -12,8 +12,9 @@ Open your agent with your area as the working directory, and start with:
 
 > You are working on the **<Backbone | Footage | Live>** area of this repo.
 > Read `AGENTS.md` at the repo root and the `AGENTS.md` in your area folder.
-> Only write inside your area. Read the agent chat first (`python3 scripts/chat.py read`)
-> and post START/DONE there. Next task: the first unchecked box in your area's `ROADMAP.md`.
+> Only write inside your area. Run `python3 scripts/board.py next <area>`, claim the
+> first task with `python3 scripts/board.py claim <#> "<me>/<agent>"`, read the agent chat
+> (`python3 scripts/chat.py read`), then do it. When merged: `python3 scripts/board.py done <#>`.
 
 Claude Code reads `CLAUDE.md` files automatically (they point at `AGENTS.md`).
 Cursor / Codex read `AGENTS.md` directly.
