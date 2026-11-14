@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "detection.schema.json",
+  "title": "Detection",
+  "type": "object",
+  "required": ["detection_id", "source", "lat", "lon", "captured_at", "confidence", "image_key", "verdict"],
+  "properties": {
+    "detection_id": { "type": "string" },
+    "source": { "enum": ["live", "drive"] },
+    "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+    "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+    "image_key": { "type": "string" },
+    "verdict": { "enum": ["pothole", "shadow", "patch", "unverified"] },
+    "verdict_reason": { "type": ["string", "null"] }
+  }
+}

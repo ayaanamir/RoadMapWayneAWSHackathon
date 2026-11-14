@@ -1,0 +1,130 @@
+{
+  "_note": "SAMPLE DATA for building UI/API before the real pipeline runs. City report ids, addresses, statuses and dates are real (Improve Detroit, pulled Nov 13). lat/lon are APPROXIMATE PLACEHOLDERS — replace with the city's geocode from the API. All detections are FAKE examples.",
+  "potholes": [
+    {
+      "pothole_id": "ph_peterboro_73",
+      "lat": 42.3446,
+      "lon": -83.0573,
+      "address": "73 Peterboro St",
+      "state": "still_there",
+      "last_seen_at": "2026-11-14T19:40:00Z",
+      "city_reports": [
+        {
+          "issue_id": "22762324",
+          "address": "73 Peterboro St",
+          "lat": 42.3446,
+          "lon": -83.0573,
+          "status": "Closed",
+          "created_at": "2026-09-13T11:32:15Z",
+          "closed_at": "2026-09-14T19:45:37Z",
+          "issue_url": "https://seeclickfix.com/issues/22762324",
+          "photo_url": null
+        },
+        {
+          "issue_id": "22762325",
+          "address": "73 Peterboro St",
+          "lat": 42.3446,
+          "lon": -83.0573,
+          "status": "Closed",
+          "created_at": "2026-09-13T11:34:54Z",
+          "closed_at": "2026-09-14T19:19:52Z",
+          "issue_url": "https://seeclickfix.com/issues/22762325",
+          "photo_url": null
+        },
+        {
+          "issue_id": "23029294",
+          "address": "73 Peterboro St",
+          "lat": 42.3446,
+          "lon": -83.0573,
+          "status": "Closed",
+          "created_at": "2026-10-15T20:02:49Z",
+          "closed_at": "2026-10-20T19:37:46Z",
+          "issue_url": "https://seeclickfix.com/issues/23029294",
+          "photo_url": "city/photos/23029294.jpg"
+        }
+      ],
+      "detections": [
+        {
+          "detection_id": "00000000-0000-4000-8000-000000000001",
+          "source": "drive",
+          "lat": 42.34462,
+          "lon": -83.05735,
+          "captured_at": "2026-11-14T19:40:00Z",
+          "confidence": 0.81,
+          "bbox": [612, 488, 140, 72],
+          "image_key": "frames/00000000-0000-4000-8000-000000000001.jpg",
+          "verdict": "pothole",
+          "verdict_reason": "FAKE EXAMPLE: open hole with exposed base layer, not a sealed patch."
+        }
+      ]
+    },
+    {
+      "pothole_id": "ph_newark_2498",
+      "lat": 42.3233,
+      "lon": -83.0918,
+      "address": "2498 Newark St",
+      "state": "reported_only",
+      "last_seen_at": null,
+      "city_reports": [
+        {
+          "issue_id": "22833821",
+          "address": "2498 Newark St",
+          "lat": 42.3233,
+          "lon": -83.0918,
+          "status": "Closed",
+          "created_at": "2026-09-21T21:18:19Z",
+          "closed_at": "2026-09-24T14:49:29Z",
+          "issue_url": "https://seeclickfix.com/issues/22833821",
+          "photo_url": null
+        },
+        {
+          "issue_id": "23193388",
+          "address": "2498 Newark St",
+          "lat": 42.3233,
+          "lon": -83.0918,
+          "status": "Closed",
+          "created_at": "2026-11-07T05:02:34Z",
+          "closed_at": "2026-11-10T18:27:18Z",
+          "issue_url": "https://seeclickfix.com/issues/23193388",
+          "photo_url": null
+        }
+      ],
+      "detections": []
+    },
+    {
+      "pothole_id": "ph_wabash_2619",
+      "lat": 42.3352,
+      "lon": -83.0741,
+      "address": "2619 Wabash St",
+      "state": "fixed_confirmed",
+      "last_seen_at": null,
+      "city_reports": [
+        {
+          "issue_id": "22700074",
+          "address": "2619 Wabash St",
+          "lat": 42.3352,
+          "lon": -83.0741,
+          "status": "Closed",
+          "created_at": "2026-09-04T21:41:43Z",
+          "closed_at": "2026-09-09T15:23:00Z",
+          "issue_url": "https://seeclickfix.com/issues/22700074",
+          "photo_url": null
+        }
+      ],
+      "detections": [
+        {
+          "detection_id": "00000000-0000-4000-8000-000000000002",
+          "source": "drive",
+          "lat": 42.33522,
+          "lon": -83.07408,
+          "captured_at": "2026-11-14T19:12:00Z",
+          "confidence": 0.44,
+          "bbox": [540, 510, 120, 60],
+          "image_key": "frames/00000000-0000-4000-8000-000000000002.jpg",
+          "verdict": "patch",
+          "verdict_reason": "FAKE EXAMPLE: dark rectangle is fresh asphalt patch, surface is level."
+        }
+      ]
+    }
+  ]
+}

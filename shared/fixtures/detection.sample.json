@@ -1,0 +1,12 @@
+{
+  "detection_id": "00000000-0000-4000-8000-000000000003",
+  "source": "live",
+  "lat": 42.3317,
+  "lon": -83.0745,
+  "captured_at": "2026-11-14T18:30:00Z",
+  "confidence": 0.67,
+  "bbox": [300, 400, 160, 90],
+  "image_key": "frames/00000000-0000-4000-8000-000000000003.jpg",
+  "verdict": "unverified",
+  "verdict_reason": null
+}

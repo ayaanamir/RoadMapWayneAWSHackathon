@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "city_report.schema.json",
+  "title": "CityReport",
+  "type": "object",
+  "required": ["issue_id", "address", "lat", "lon", "status", "created_at", "issue_url"],
+  "properties": {
+    "issue_id": { "type": "string" },
+    "address": { "type": "string" },
+    "lat": { "type": "number" },
+    "lon": { "type": "number" },
+    "status": { "enum": ["Open", "Closed", "Archived"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "closed_at": { "type": ["string", "null"], "format": "date-time" },
+    "issue_url": { "type": "string" },
+    "photo_url": { "type": ["string", "null"] }
+  }
+}

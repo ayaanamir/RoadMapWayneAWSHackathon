@@ -1,0 +1,31 @@
+# secrets
+.env
+*.pem
+# python / node
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+.pytest_cache/
+# media + data (goes to S3, never git)
+*.mp4
+*.mov
+*.MOV
+*.MP4
+*.avi
+*.gpx
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+# models
+*.pt
+*.onnx
+*.engine
+apps/live/model/
+# outputs
+pipeline/out/
+out/
+.DS_Store
+.aws-sam/
