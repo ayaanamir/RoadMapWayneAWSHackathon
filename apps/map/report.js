@@ -5,11 +5,11 @@ const CITY_REPORT_PAGE = 'https://detroitmi.gov/how-do-i/report';
 const VERDICT = { pothole: 'Pothole confirmed', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not verified yet' };
 // Same wording as the map panel (app.js), so a state reads the same everywhere.
 const LABEL = {
-  still_there: 'Still there after the city closed it',
-  unreported: 'Seen by us, not reported to the city',
-  fixed_confirmed: 'Fixed, checked by us',
-  reported_only: 'City report, not checked yet',
-  unknown: 'Not enough evidence yet',
+  still_there: 'Still there after closing',
+  unreported: 'Not reported to the city',
+  fixed_confirmed: 'Fixed',
+  reported_only: 'Not checked yet',
+  unknown: 'Not enough evidence',
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

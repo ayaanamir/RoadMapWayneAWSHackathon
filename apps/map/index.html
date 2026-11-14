@@ -11,16 +11,17 @@
   <link rel="stylesheet" href="/apps/map/style.css">
 </head>
 <body>
+  <!-- Top bar: name, what it is, the totals that matter, and whether the data is live.
+       Numbers filled in by app.js. -->
   <header class="bar">
     <div class="brand">Still There</div>
-    <div class="summary" id="summary">Loading city reports</div>
-    <!-- One entry per pin color, with how many pins have it. Counts filled in by app.js. -->
-    <ul class="legend" aria-label="Legend">
-      <li><span class="dot still_there"></span>Still there<b id="n-still_there">0</b></li>
-      <li><span class="dot unreported"></span>Not reported<b id="n-unreported">0</b></li>
-      <li><span class="dot fixed_confirmed"></span>Fixed<b id="n-fixed_confirmed">0</b></li>
-      <li><span class="dot reported_only"></span>Not checked yet<b id="n-reported_only">0</b></li>
-    </ul>
+    <p class="tagline">Closed pothole reports, checked again</p>
+    <dl class="totals">
+      <div><dd id="t-spots">0</dd><dt>spots</dt></div>
+      <div><dd id="t-reports">0</dd><dt>city reports</dt></div>
+      <div class="still"><dd id="t-still">0</dd><dt>still there</dt></div>
+    </dl>
+    <p class="source" id="source">Loading</p>
   </header>
   <main class="layout">
     <div id="map" aria-label="Map of pothole reports"></div>

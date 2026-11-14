@@ -37,19 +37,21 @@ const STATE_ROUTES = [
   [/\bdavison (fwy|freeway)/i, 'M-8'],
 ];
 
-// Returns { key, agency, route, reason }. `reason` is one plain sentence.
+// Returns { key, agency, route, kind, reason }. `kind` is a short phrase for the map
+// ("State route US-12"), `reason` one plain sentence for the report.
 function roadOwner(address) {
   const street = String(address || '').replace(/^[\d-]+\s+/, ''); // drop the house number
   for (const [pattern, route] of STATE_ROUTES) {
     const match = street.match(pattern);
     if (!match) continue;
     const where = street.includes('&') ? `This corner is on ${route}` : `${titleCase(match[0])} is ${route}`;
-    return { key: 'state', agency: AGENCIES.state, route, reason: `${where}, a state route.` };
+    return { key: 'state', agency: AGENCIES.state, route, kind: `State route ${route}`, reason: `${where}, a state route.` };
   }
   return {
     key: 'city',
     agency: AGENCIES.city,
     route: null,
+    kind: 'City street',
     reason: street ? `${street} is a city street.` : 'Most Detroit streets are city streets.',
   };
 }

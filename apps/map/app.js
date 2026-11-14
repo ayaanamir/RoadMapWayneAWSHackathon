@@ -11,11 +11,11 @@ const STYLE = {
 };
 // Same wording as the evidence report (report.js), so a state reads the same everywhere.
 const LABEL = {
-  still_there: 'Still there after the city closed it',
-  unreported: 'Seen by us, not reported to the city',
-  fixed_confirmed: 'Fixed, checked by us',
-  reported_only: 'City report, not checked yet',
-  unknown: 'Not enough evidence yet',
+  still_there: 'Still there after closing',
+  unreported: 'Not reported to the city',
+  fixed_confirmed: 'Fixed',
+  reported_only: 'Not checked yet',
+  unknown: 'Not enough evidence',
 };
 // Short names for the list tags.
 const SHORT = { still_there: 'Still there', unreported: 'Not reported', fixed_confirmed: 'Fixed' };
@@ -43,19 +43,25 @@ let fitted = false;
 const fmtDate = (iso) => iso
   ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Detroit' })
   : '';
+// Short date in the list rows: no year when it is this year.
+const shortDate = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(new Date(iso).getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }), timeZone: 'America/Detroit' });
 const fmtTime = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Detroit' });
 const days = (a, b) => Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 const order = (p) => ({ still_there: 3, unreported: 2, fixed_confirmed: 1 }[p.state] || 0);
 
+let live = false; // true when the data came from the API, false for the sample file
+
 async function load() {
   try {
     const r = await fetch('/api/potholes', { cache: 'no-store' });
     if (!r.ok) throw new Error(r.status);
+    live = true;
     return (await r.json()).potholes;
   } catch (e) {
     console.warn('API failed, using fixtures', e);
+    live = false;
     const r = await fetch('/shared/fixtures/potholes.sample.json');
     return (await r.json()).potholes;
   }
@@ -80,14 +86,15 @@ function draw() {
   }
   for (const [id, m] of markers) if (!seen.has(id)) { layer.removeLayer(m); markers.delete(id); }
 
-  // Header: totals in one short line, and a count next to each legend color.
-  const reports = potholes.reduce((n, p) => n + p.city_reports.length, 0);
-  document.getElementById('summary').innerHTML =
-    `<b>${potholes.length}</b> spots, <b>${reports}</b> city reports`;
-  for (const state of ['still_there', 'unreported', 'fixed_confirmed', 'reported_only']) {
-    const n = potholes.filter((p) => p.state === state || (state === 'reported_only' && p.state === 'unknown')).length;
-    document.getElementById(`n-${state}`).textContent = n;
-  }
+  // Top bar: totals, and whether this is live data or the saved sample.
+  document.getElementById('t-spots').textContent = potholes.length;
+  document.getElementById('t-reports').textContent = potholes.reduce((n, p) => n + p.city_reports.length, 0);
+  document.getElementById('t-still').textContent = countState('still_there');
+  const source = document.getElementById('source');
+  source.className = `source ${live ? 'live' : 'sample'}`;
+  source.textContent = live
+    ? `Live, ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+    : 'Sample data';
 
   if (!fitted && potholes.length) {
     fitted = true;
@@ -96,6 +103,16 @@ function draw() {
 }
 
 const byId = (id) => potholes.find((p) => p.pothole_id === id);
+// Gray pins cover two states (not checked yet, not enough evidence), so count them together.
+const stateOf = (p) => (p.state === 'unknown' ? 'reported_only' : p.state);
+const countState = (state) => potholes.filter((p) => stateOf(p) === state).length;
+const LEGEND = [
+  ['still_there', 'Still there'],
+  ['unreported', 'Not reported'],
+  ['fixed_confirmed', 'Fixed'],
+  ['reported_only', 'Not checked'],
+];
+let filter = null; // a state from LEGEND, or null for all spots
 
 // ---- Sidebar ----
 // Two views in the same panel:
@@ -168,15 +185,23 @@ function listLine(p, f) {
 function renderList() {
   // Important first: still there, then not reported, then fixed. Within that, the
   // spots reported most often, then the most recent.
-  const rows = [...potholes].map((p) => ({ p, f: facts(p) })).sort((a, b) =>
-    order(b.p) - order(a.p)
-    || b.f.reports.length - a.f.reports.length
-    || String(b.f.reports.at(-1)?.created_at || '').localeCompare(String(a.f.reports.at(-1)?.created_at || '')));
+  const rows = potholes
+    .filter((p) => !filter || stateOf(p) === filter)
+    .map((p) => ({ p, f: facts(p) }))
+    .sort((a, b) =>
+      order(b.p) - order(a.p)
+      || b.f.reports.length - a.f.reports.length
+      || String(b.f.reports.at(-1)?.created_at || '').localeCompare(String(a.f.reports.at(-1)?.created_at || '')));
 
   setPanel(`
+    <!-- Legend: what each pin color means, with counts. Click one to show only those. -->
+    <div class="legend" role="group" aria-label="Pin colors">
+      ${LEGEND.map(([state, name]) => `<button type="button" class="chip" data-state="${state}" aria-pressed="${filter === state}">
+        <span class="dot ${state}"></span>${name}<b>${countState(state)}</b></button>`).join('')}
+    </div>
     <header class="panel-head">
-      <h1 class="panel-title">Spots</h1>
-      <p class="panel-sub">${plural(potholes.length, 'spot')} in Corktown, Midtown and Southwest Detroit. Most important first.</p>
+      <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
+      <p class="panel-sub">${rows.length ? 'Most important first' : 'None yet'}</p>
     </header>
     <ul class="spots">
       ${rows.map(({ p, f }) => `
@@ -188,16 +213,7 @@ function renderList() {
           </span>
           ${order(p) > 0 ? `<span class="spot-tag ${esc(p.state)}">${esc(SHORT[p.state])}</span>` : ''}
         </button></li>`).join('')}
-    </ul>
-    <section class="key" aria-label="What the colors mean">
-      <h2>What the colors mean</h2>
-      <ul>
-        <li><span class="dot still_there"></span><span><b>Still there.</b> The city closed the report, and our camera saw the pothole after that.</span></li>
-        <li><span class="dot unreported"></span><span><b>Not reported.</b> Our camera found it. The city has no report.</span></li>
-        <li><span class="dot fixed_confirmed"></span><span><b>Fixed.</b> Our camera saw the patch.</span></li>
-        <li><span class="dot reported_only"></span><span><b>Not checked yet.</b> City reports only. Our cameras have not been there.</span></li>
-      </ul>
-    </section>`);
+    </ul>`);
 }
 
 function renderSpot(p) {
@@ -215,11 +231,11 @@ function renderSpot(p) {
   // One row per city report: filed, then closed (or still open).
   const reportRows = f.reports.map((r) => {
     const outcome = r.closed_at
-      ? `Closed ${fmtDate(r.closed_at)}, ${plural(days(r.created_at, r.closed_at), 'day')} later`
+      ? `Closed ${shortDate(r.closed_at)}, ${plural(days(r.created_at, r.closed_at), 'day')}`
       : 'Still open';
     return `<li>
       <a class="row-id" href="${esc(r.issue_url)}" target="_blank" rel="noopener">#${esc(r.issue_id)}</a>
-      <span class="row-main">Filed ${esc(fmtDate(r.created_at))}</span>
+      <span class="row-main">Filed ${esc(shortDate(r.created_at))}</span>
       <span class="row-sub ${r.closed_at ? '' : 'open'}">${esc(outcome)}</span>
     </li>`;
   }).join('');
@@ -247,26 +263,32 @@ function renderSpot(p) {
     <section class="block">
       <h2>City reports</h2>
       ${cityPhoto ? `<img class="shot" src="${esc(cityPhoto.photo_url)}" alt="Photo from city report ${esc(cityPhoto.issue_id)}" onerror="this.remove()">` : ''}
-      ${f.reports.length ? `<ol class="rows">${reportRows}</ol>` : '<p class="note">None. The city has no report for this spot.</p>'}
+      ${f.reports.length ? `<ol class="rows">${reportRows}</ol>` : '<p class="note">No city report</p>'}
     </section>
 
     <section class="block">
       <h2>Our cameras</h2>
       ${frame?.image_url ? `<img class="shot" src="${esc(frame.image_url)}" alt="Our camera frame" onerror="this.remove()">` : ''}
-      ${f.dets.length ? `<ol class="rows">${camRows}</ol>` : '<p class="note">Not checked yet. Our cameras have not been here.</p>'}
+      ${f.dets.length ? `<ol class="rows">${camRows}</ol>` : '<p class="note">Not checked yet</p>'}
     </section>
 
     <section class="block owner">
       <h2>Who fixes it</h2>
-      <p><b>${esc(owner.agency.short)}</b>. ${esc(owner.reason)}</p>
+      <p><b>${esc(owner.agency.short)}</b>, ${esc(owner.kind.toLowerCase())}</p>
     </section>
 
     <a class="report-link" href="/report?id=${encodeURIComponent(p.pothole_id)}">Evidence report and PDF</a>
     <p class="meta">${esc(p.pothole_id)}, ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</p>`);
 }
 
-// Clicks inside the panel: a spot in the list, or the back button.
+// Clicks inside the panel: a legend chip, a spot in the list, or the back button.
 panel.addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (chip) {
+    filter = filter === chip.dataset.state ? null : chip.dataset.state;
+    panel.scrollTop = 0;
+    return renderList();
+  }
   const row = e.target.closest('.spot-row');
   if (row) return select(row.dataset.id);
   if (e.target.closest('#back')) showList();
