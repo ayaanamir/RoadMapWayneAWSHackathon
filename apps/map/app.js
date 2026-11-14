@@ -9,17 +9,25 @@ const POLL_MS = 5000;
 //   not checked yet  small plain gray dot, so the many city-only spots stay quiet
 const PIN = {
   still_there: { size: 28, svg: '<circle cx="14" cy="14" r="12" fill="#f2c230" stroke="#0f0f10" stroke-width="2"/><path d="M14 8v7" stroke="#141415" stroke-width="2.6" stroke-linecap="round"/><circle cx="14" cy="19.5" r="1.6" fill="#141415"/>' },
-  unreported: { size: 26, svg: '<circle cx="13" cy="13" r="11" fill="#141415" stroke="#ededed" stroke-width="2.4"/><path d="M8.5 11.2a1 1 0 0 1 1-1h1.3l.9-1.4h2.6l.9 1.4h1.3a1 1 0 0 1 1 1v4.6a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z" fill="none" stroke="#ededed" stroke-width="1.4" stroke-linejoin="round"/><circle cx="13" cy="13.4" r="1.7" fill="none" stroke="#ededed" stroke-width="1.4"/>' },
+  // Camera: the Lucide camera outline, scaled into the ring.
+  unreported: { size: 26, svg: '<circle cx="13" cy="13" r="11" fill="#141415" stroke="#ededed" stroke-width="2.4"/><g transform="translate(6.4 6.4) scale(.55)" fill="none" stroke="#ededed" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></g>' },
   fixed_confirmed: { size: 24, svg: '<circle cx="12" cy="12" r="11" fill="#4cc38a"/><path d="m8 12.3 2.7 2.7L16 9.6" fill="none" stroke="#0f0f10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' },
   reported_only: { size: 14, svg: '<circle cx="7" cy="7" r="5.5" fill="#8e8e94" stroke="#0f0f10" stroke-width="1.5"/>' },
 };
 PIN.unknown = PIN.reported_only;
 
+// The pin symbol as an <svg>, drawn `px` wide. Used on the map, in the legend, the list
+// and the empty state, so a state looks the same everywhere.
+function pinSvg(state, px, cls = '') {
+  const pin = PIN[state] || PIN.unknown;
+  return `<svg class="${cls}" viewBox="0 0 ${pin.size} ${pin.size}" width="${px}" height="${px}" aria-hidden="true">${pin.svg}</svg>`;
+}
+
 function pinIcon(state, selected) {
   const pin = PIN[state] || PIN.unknown;
   return L.divIcon({
     className: `pin pin-${state}${selected ? ' selected' : ''}`,
-    html: `<svg viewBox="0 0 ${pin.size} ${pin.size}" width="${pin.size}" height="${pin.size}" aria-hidden="true">${pin.svg}</svg>`,
+    html: pinSvg(state, pin.size),
     iconSize: [pin.size, pin.size],
     iconAnchor: [pin.size / 2, pin.size / 2],
   });
@@ -218,7 +226,7 @@ function renderList() {
     <!-- Legend: what each pin color means, with counts. Click one to show only those. -->
     <div class="legend" role="group" aria-label="Pin colors">
       ${LEGEND.map(([state, name]) => `<button type="button" class="chip" data-state="${state}" aria-pressed="${filter === state}">
-        <span class="dot ${state}"></span>${name}<b>${countState(state)}</b></button>`).join('')}
+        ${pinSvg(state, 16, 'dot')}${name}<b>${countState(state)}</b></button>`).join('')}
     </div>
     <header class="panel-head">
       <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
@@ -228,7 +236,7 @@ function renderList() {
     <ul class="spots">
       ${rows.map(({ p, f }) => `
         <li><button type="button" class="spot-row" data-id="${esc(p.pothole_id)}">
-          <span class="dot ${esc(p.state)}"></span>
+          ${pinSvg(stateOf(p), 16, 'dot')}
           <span class="spot-text">
             <span class="spot-name">${esc(p.address || 'Unnamed spot')}</span>
             <span class="spot-line">${esc(listLine(p, f))}</span>
@@ -242,14 +250,13 @@ function renderList() {
 // and a way back to all spots.
 const EMPTY = {
   still_there: 'No closed reports seen still there yet',
-  unreported: 'Our cameras have not found any unreported ones yet',
+  unreported: 'Our cameras have not found any yet',
   fixed_confirmed: 'No repairs confirmed by our cameras yet',
   reported_only: 'Every spot has been checked',
 };
 function emptyState(state) {
-  const pin = PIN[state] || PIN.unknown;
   return `<div class="empty-state">
-    <svg viewBox="0 0 ${pin.size} ${pin.size}" width="64" height="64" aria-hidden="true">${pin.svg}</svg>
+    ${pinSvg(state, 64)}
     <p class="empty-title">None yet</p>
     <p class="empty-sub">${esc(EMPTY[state] || '')}</p>
     <button type="button" class="empty-action" data-clear>Show all spots</button>
@@ -293,7 +300,7 @@ function renderSpot(p) {
     <button type="button" class="back" id="back">← All spots</button>
     <header class="spot-head">
       <h1 class="place">${esc(p.address || 'Unnamed spot')}</h1>
-      <p class="status ${esc(p.state)}"><span class="dot ${esc(p.state)}"></span>${esc(LABEL[p.state] || p.state)}</p>
+      <p class="status ${esc(p.state)}">${pinSvg(stateOf(p), 16, 'dot')}${esc(LABEL[p.state] || p.state)}</p>
     </header>
 
     <dl class="stats n${stats.length}">

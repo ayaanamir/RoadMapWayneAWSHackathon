@@ -44,11 +44,8 @@ body { display: grid; grid-template-columns: 1fr var(--side); grid-template-rows
 .source.live::before { background: var(--fixed); }
 .source.sample { color: var(--paint); }
 
-.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
-.dot.still_there { background: var(--paint); }
-.dot.unreported { border: 2px solid var(--unreported); }
-.dot.fixed_confirmed { background: var(--fixed); }
-.dot.reported_only, .dot.unknown { background: #8e8e94; }
+/* Small copy of the map pin, in the legend, list rows and status tag. */
+.dot { display: inline-block; flex-shrink: 0; vertical-align: middle; }
 
 #map { background: var(--bg); }
 .panel { overflow-y: auto; padding: 24px; background: var(--bg); border-left: 1px solid var(--line); color: var(--text); }
