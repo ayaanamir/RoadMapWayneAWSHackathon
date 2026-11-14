@@ -18,8 +18,34 @@ export const R2_PUBLIC_URL = "https://pub-9da122d7960d49de90da1a69cb4fe7f9.r2.de
 // To test a local copy instead: ?model=/apps/live/model/yolo11n.onnx
 export const MODEL_URL = params.get("model") || `${R2_PUBLIC_URL}/models/yolo11n.onnx`;
 
-// Which engine runs the model: "webgpu", "wasm", or "auto" (try WebGPU, then WASM).
-export const BACKEND = params.get("ep") || "auto";
+// Which engine runs the model: "webgpu", "wasm", or "auto" (WebGPU if the browser
+// has it, else WASM). Order of choice:
+//   1. ?ep= in the URL (for testing)
+//   2. what this phone fell back to last time (WebGPU hung here before)
+//   3. "auto"
+const ENGINE_MEMORY_KEY = "live.engine";
+export const BACKEND_FROM_URL = params.get("ep");
+export const REMEMBERED_BACKEND = readMemory(ENGINE_MEMORY_KEY);
+export const BACKEND = BACKEND_FROM_URL || REMEMBERED_BACKEND || "auto";
+
+// Remember an engine for this phone (or clear it with null).
+// Wrapped in try/catch because private browsing can block storage.
+export function rememberBackend(backend) {
+  try {
+    if (backend) localStorage.setItem(ENGINE_MEMORY_KEY, backend);
+    else localStorage.removeItem(ENGINE_MEMORY_KEY);
+  } catch {
+    // Storage blocked: the page still works, it just will not remember.
+  }
+}
+
+function readMemory(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
 
 // The model expects a square image of this size (what it was exported with).
 export const INPUT_SIZE = 640;

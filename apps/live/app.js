@@ -12,8 +12,8 @@
 //   #42 GPS + one detection per second, #43 upload frame and POST /api/detections.
 //   The place to hook those in is marked "NEXT" below.
 
-import { Detector } from "./detector.js";
-import { BACKEND } from "./config.js";
+import { Detector, EngineFailed } from "./detector.js";
+import { BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend } from "./config.js";
 
 const view = document.getElementById("view");
 const ctx = view.getContext("2d");
@@ -55,6 +55,8 @@ async function start() {
       openCamera(),
     ]);
     stats.backend.textContent = detector.backend;
+    // WebGPU was picked by hand and it worked: stop forcing WASM on this phone.
+    if (BACKEND_FROM_URL === "webgpu") rememberBackend(null);
     console.info(`[live] model ready on ${detector.backend} in ${Math.round(detector.loadMs)} ms`);
 
     startScreen.hidden = true;
@@ -62,6 +64,17 @@ async function start() {
     requestAnimationFrame(drawLoop);
   } catch (err) {
     console.error("[live]", err);
+
+    // WebGPU failed and nobody forced it in the URL: remember to use WASM on this
+    // phone and reload. A reload is needed because a stuck WebGPU run keeps holding
+    // the runtime, so WASM cannot start in this same page.
+    if (err instanceof EngineFailed && err.backend === "webgpu" && !BACKEND_FROM_URL) {
+      setStatus("WebGPU does not work on this phone. Switching to WASM...");
+      rememberBackend("wasm");
+      setTimeout(() => window.location.reload(), 1000);
+      return;
+    }
+
     setStatus(err.message || String(err));
     startButton.disabled = false;
   }
@@ -184,5 +197,9 @@ function setStatus(text) {
   statusText.textContent = text;
 }
 
-// Show which engine was requested, before anything loads.
-if (BACKEND !== "auto") setStatus(`Engine forced to ${BACKEND} by the URL.`);
+// Show which engine will be used, before anything loads.
+if (BACKEND_FROM_URL) {
+  setStatus(`Engine set to ${BACKEND_FROM_URL} by the URL.`);
+} else if (REMEMBERED_BACKEND === "wasm") {
+  setStatus("Using WASM on this phone (WebGPU did not work here before). Tap Start camera.");
+}

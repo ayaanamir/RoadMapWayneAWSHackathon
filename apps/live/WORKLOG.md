@@ -4,6 +4,22 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · #38 fix 2: stuck on "Starting model (wasm)" on a phone (Ado + Claude)
+
+Branch: `live/wasm-reload-fallback`.
+
+- Fix 1 (switch to WASM in the same page) did not work on Ado's phone: it stopped at
+  "Starting model (wasm)". Cause: the stuck WebGPU run keeps holding ONNX Runtime, so
+  WASM waits behind it forever. The laptop test missed this because the fake hang did
+  not hold the runtime.
+- Now each page load uses one engine only. If WebGPU fails or hangs (15 s limit), the
+  page remembers "use WASM on this phone" (localStorage) and reloads. After that the
+  phone goes straight to WASM.
+- WASM mode loads the smaller ONNX Runtime build (about 11 MB instead of 22 MB).
+- Picking WebGPU by hand ("Switch engine") and having it work clears the memory.
+- Tested on laptop Chrome: normal WebGPU (5 objects), fake WebGPU hang (caught after
+  15 s), and remembered WASM (smaller runtime, 5 objects, about 325 ms per run).
+
 ## 2026-11-14 · #38 fix: stuck on "Warming up" on a phone (Ado + Claude)
 
 Branch: `live/warmup-fallback`.
