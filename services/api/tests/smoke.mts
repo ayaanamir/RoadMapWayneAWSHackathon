@@ -15,6 +15,27 @@ if (!url) {
 }
 process.env.DATABASE_URL = url;
 
+// Fake OpenRouter: answers by image name (…/hole.jpg → pothole, …/flat.jpg → shadow, …/down.jpg → 500).
+import http from 'node:http';
+const fakeCalls: string[] = [];
+const fake = http.createServer((req, res) => {
+  let b = '';
+  req.on('data', (c) => (b += c));
+  req.on('end', () => {
+    const msg = JSON.parse(b).messages[0].content;
+    const img: string = msg.find((c: any) => c.type === 'image_url').image_url.url;
+    fakeCalls.push(img);
+    if (img.endsWith('down.jpg')) { res.writeHead(500); return res.end('boom'); }
+    const verdict = img.endsWith('hole.jpg') ? 'pothole' : 'shadow';
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ choices: [{ message: { content: `{"verdict":"${verdict}","reason":"fake ${verdict}"}` } }] }));
+  });
+}).listen(0);
+await new Promise((r) => fake.once('listening', r));
+process.env.OPENROUTER_BASE_URL = `http://127.0.0.1:${(fake.address() as any).port}`;
+process.env.OPENROUTER_API_KEY = 'test';
+process.env.OPENROUTER_MODEL = 'fake/vision';
+
 const health = await import('../../../api/health');
 const potholes = await import('../../../api/potholes');
 const detections = await import('../../../api/detections');
@@ -183,6 +204,51 @@ await check('batch of 3 at one new spot → one pothole, results in input order'
   console.log(`       (batch took ${Date.now() - t0} ms)`);
 });
 
+console.log('server-side vision check (fake OpenRouter)');
+const postWait = async (payload: unknown) =>
+  body(await detections.POST(new Request(`${BASE}/api/detections?verify=wait`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })));
+await check('unverified + real image far away → model says pothole → new unreported pothole', async () => {
+  const d = det({ ...far(), image_url: 'https://img.test/a/hole.jpg' });
+  const r = await postWait(d);
+  assert.equal(r.json.results[0].pothole_id, null, 'answer is sent before the check');
+  assert.deepEqual(r.json.verified, [{ detection_id: d.detection_id, verdict: 'pothole' }]);
+  const all = (await body(await potholes.GET(new Request(`${BASE}/api/potholes`)))).json.potholes;
+  const p = all.find((x: any) => x.detections.some((y: any) => y.detection_id === d.detection_id));
+  assert.ok(p, 'pothole created after verification');
+  assert.equal(p.state, 'unreported');
+  assert.equal(p.detections[0].verdict_reason, 'fake pothole');
+});
+await check('unverified live sighting at Peterboro → verified → still_there', async () => {
+  await postWait(det({ verdict: 'patch', captured_at: new Date(Date.now() + 180_000).toISOString() }));
+  assert.equal((await getPothole('ph_peterboro_73')).json.state, 'fixed_confirmed');
+  await postWait(det({ image_url: 'https://img.test/b/hole.jpg', captured_at: new Date(Date.now() + 240_000).toISOString() }));
+  assert.equal((await getPothole('ph_peterboro_73')).json.state, 'still_there');
+});
+await check('model says shadow → stored as shadow, no pothole', async () => {
+  const d = det({ ...far(), image_url: 'https://img.test/c/flat.jpg' });
+  const r = await postWait(d);
+  assert.deepEqual(r.json.verified, [{ detection_id: d.detection_id, verdict: 'shadow' }]);
+  assert.equal((await postWait({ ...d, verdict: 'shadow' })).json.results[0].pothole_id, null);
+});
+await check('model down → stays unverified, request still 200', async () => {
+  const d = det({ ...far(), image_url: 'https://img.test/d/down.jpg' });
+  const r = await postWait(d);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json.verified, [{ detection_id: d.detection_id, verdict: null }]);
+});
+await check('producer verdicts and placeholder images are never sent to the model', async () => {
+  const n = fakeCalls.length;
+  const r = await postWait({ detections: [det({ ...far(), verdict: 'pothole', image_url: 'https://img.test/e/hole.jpg' }), det({ ...far() })] });
+  assert.equal(r.json.verified, undefined);
+  assert.equal(fakeCalls.length, n);
+});
+await check('without ?verify=wait the answer is immediate and says how many are being checked', async () => {
+  const r = await post(det({ ...far(), image_url: 'https://img.test/f/flat.jpg' }));
+  assert.equal(r.json.verifying, 1);
+  await new Promise((ok) => setTimeout(ok, 1500)); // let the background check finish
+});
+
 console.log('POST /api/upload');
 const up = (name: string, type = 'image/jpeg', bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9])) =>
   upload.POST(new Request(`${BASE}/api/upload?name=${name}`, { method: 'POST', headers: { 'Content-Type': type }, body: bytes }));
@@ -212,3 +278,4 @@ await check('GET /api/potholes < 1 s (warm)', async () => {
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ', some FAILED' : ''}`);
+fake.close();
