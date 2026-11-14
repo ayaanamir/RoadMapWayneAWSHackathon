@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Evidence report · Still There</title>
+  <title>Repair request · Still There</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,9 +14,14 @@
     <a href="/" id="back">Back to the map</a>
     <button type="button" id="print" title="Opens the print window. Pick &quot;Save as PDF&quot; there.">Save as PDF</button>
   </nav>
+  <!-- The request as it prints: white paper on screen too. -->
   <main class="sheet" id="sheet">
     <p class="muted">Loading</p>
   </main>
+  <!-- Screen only: the message for the road owner and a demo Send button. -->
+  <section class="send no-print" id="send-panel" hidden></section>
+  <!-- QR code for the live evidence page (qrcode-generator, MIT). -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="/apps/map/agency.js"></script>
   <script src="/apps/map/report.js"></script>
 </body>
