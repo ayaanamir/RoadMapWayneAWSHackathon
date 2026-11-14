@@ -224,7 +224,7 @@ function renderList() {
       <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
 
     </header>
-    ${rows.length ? '' : '<p class="empty-state">None yet</p>'}
+    ${rows.length ? '' : emptyState(filter)}
     <ul class="spots">
       ${rows.map(({ p, f }) => `
         <li><button type="button" class="spot-row" data-id="${esc(p.pothole_id)}">
@@ -236,6 +236,24 @@ function renderList() {
           ${order(p) > 0 ? `<span class="spot-tag ${esc(p.state)}">${esc(SHORT[p.state])}</span>` : ''}
         </button></li>`).join('')}
     </ul></div>`);
+}
+
+// Shown when a legend filter has no spots: the big pin for that state, a short phrase,
+// and a way back to all spots.
+const EMPTY = {
+  still_there: 'No closed reports seen still there yet',
+  unreported: 'Our cameras have not found any unreported ones yet',
+  fixed_confirmed: 'No repairs confirmed by our cameras yet',
+  reported_only: 'Every spot has been checked',
+};
+function emptyState(state) {
+  const pin = PIN[state] || PIN.unknown;
+  return `<div class="empty-state">
+    <svg viewBox="0 0 ${pin.size} ${pin.size}" width="64" height="64" aria-hidden="true">${pin.svg}</svg>
+    <p class="empty-title">None yet</p>
+    <p class="empty-sub">${esc(EMPTY[state] || '')}</p>
+    <button type="button" class="empty-action" data-clear>Show all spots</button>
+  </div>`;
 }
 
 function renderSpot(p) {
@@ -309,6 +327,10 @@ function renderSpot(p) {
 
 // Clicks inside the panel: a legend chip, a spot in the list, or the back button.
 panel.addEventListener('click', (e) => {
+  if (e.target.closest('[data-clear]')) {
+    filter = null;
+    return renderList();
+  }
   const chip = e.target.closest('.chip');
   if (chip) {
     filter = filter === chip.dataset.state ? null : chip.dataset.state;
