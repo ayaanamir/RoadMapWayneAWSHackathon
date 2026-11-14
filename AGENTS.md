@@ -97,6 +97,14 @@ You may **read** anything. You may only **write** in your own area.
   build tools, or infrastructure without your human's OK.
 - Don't add dependencies to another area's `requirements.txt` / `package.json`.
 
+## 6b. Collision check before EVERY commit
+
+- Once per checkout: `git config stillthere.area <your area(s)>` and
+  `python3 scripts/precommit.py --install-hook`.
+- Before every commit and push: `python3 scripts/precommit.py` (fetches `origin`, blocks
+  out-of-area / `shared/` / secret files, and catches teammates' changes to your files).
+- Full checklist: `.claude/skills/no-collisions/SKILL.md` (any agent can read it).
+
 ## 7. Before you finish a task
 
 - Run your area's check command (listed in your area's `AGENTS.md`).
