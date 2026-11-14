@@ -5,6 +5,6 @@ Rules: `AGENTS.md` here + at repo root. Progress: `ROADMAP.md`.
 
 ## Run / deploy
 _Owner fills this in as it's built:_
-- Local: `…`
-- Deploy: `…`
-- Live URL: `…` (also post it in the agent chat)
+- Local: `npm install && vercel dev` (needs `DATABASE_URL` in `.env`; without it `/api/potholes` serves the fixture)
+- Deploy: merge to `main` (Vercel auto-deploys)
+- Live URL: https://wayneawshackathon.vercel.app (`/api/health`, `/api/potholes`)
