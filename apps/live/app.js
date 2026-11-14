@@ -22,13 +22,14 @@ const startScreen = document.getElementById("start-screen");
 const startButton = document.getElementById("start");
 const statusText = document.getElementById("status");
 const banner = document.getElementById("banner");
+const bannerText = document.getElementById("banner-text");
+const bannerProgress = document.getElementById("banner-progress");
+const bannerBar = document.getElementById("banner-bar");
+const engineButton = document.getElementById("switch-backend");
 const stats = {
   panel: document.getElementById("stats"),
   model: document.getElementById("stat-model"),
   mode: document.getElementById("stat-mode"),
-  backend: document.getElementById("stat-backend"),
-  ms: document.getElementById("stat-ms"),
-  fps: document.getElementById("stat-fps"),
   count: document.getElementById("stat-count"),
   gps: document.getElementById("stat-gps"),
   sent: document.getElementById("stat-sent"),
@@ -62,7 +63,7 @@ async function start() {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("This browser cannot use the camera here. The page must be opened over https (or on localhost).");
     }
-    say("Opening camera...");
+    say("Opening camera");
     await openCamera();
   } catch (err) {
     console.error("[live] camera failed:", err);
@@ -76,13 +77,13 @@ async function start() {
   reporter.startGps();
 
   startScreen.hidden = true;
+  say("Starting the detector", 0);
   banner.hidden = false;
   requestAnimationFrame(drawLoop);
 
   // Step 2: the model.
   try {
     await detector.load(say);
-    stats.backend.textContent = detector.backend;
     const { name, sending } = modelInfo();
     stats.model.textContent = name;
     stats.mode.textContent = sending ? "Sending" : "Practice";
@@ -208,13 +209,15 @@ function recordSpeed(ms) {
   if (recentMs.length > 30) recentMs.shift();
   if (recentRunTimes.length > 30) recentRunTimes.shift();
 
+  // Speed is not shown on screen any more. It sits in the engine button's tooltip
+  // (long-press or hover) and the console, for comparing phones.
   const avgMs = recentMs.reduce((a, b) => a + b, 0) / recentMs.length;
-  stats.ms.textContent = avgMs.toFixed(0);
-
+  let perSecond = 0;
   if (recentRunTimes.length > 1) {
     const seconds = (now - recentRunTimes[0]) / 1000;
-    stats.fps.textContent = ((recentRunTimes.length - 1) / seconds).toFixed(1);
+    perSecond = (recentRunTimes.length - 1) / seconds;
   }
+  engineButton.title = `Switch engine (now ${detector.backend}, ${avgMs.toFixed(0)} ms, ${perSecond.toFixed(1)} per s)`;
 }
 
 // Reload the page using the other engine, to compare speed on the same phone.
@@ -253,9 +256,13 @@ function showReporterState({ gps, sent, message }) {
 }
 
 // Show a message on the start screen and on top of the camera picture.
-function say(text) {
+// `progress` (0 to 1) fills the yellow bar; leave it out to hide the bar (errors).
+function say(text, progress) {
   statusText.textContent = text;
-  banner.textContent = text;
+  bannerText.textContent = text;
+  const hasBar = typeof progress === "number";
+  bannerProgress.hidden = !hasBar;
+  if (hasBar) bannerBar.style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
 }
 
 // Show any error we did not expect on screen, since a phone has no console to check.

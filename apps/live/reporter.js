@@ -21,7 +21,7 @@ export class Reporter {
     this.sending = false;      // a send is in progress
     this.lastSentAt = 0;       // when the last send started (ms)
     this.sentCount = 0;        // how many detections went through
-    this.lastMessage = DRY_RUN ? "Practice: nothing goes to the map" : "";
+    this.lastMessage = DRY_RUN ? "Practice, nothing goes to the map" : "";
 
     // Reused canvas for making the JPEG.
     this.canvas = document.createElement("canvas");
@@ -62,7 +62,7 @@ export class Reporter {
 
     const gps = this.usableGps();
     if (!gps) {
-      this.lastMessage = `Saw ${wanted[0].label}, but no GPS yet.`;
+      this.lastMessage = "Pothole seen, waiting for GPS";
       this.changed();
       return;
     }
@@ -114,12 +114,12 @@ export class Reporter {
 
       if (DRY_RUN) {
         console.info("[live] dry run, would send:", detection);
-        this.lastMessage = `Would send: ${box.label} ${Math.round(box.score * 100)}% at ${gps.lat.toFixed(5)}, ${gps.lon.toFixed(5)}`;
+        this.lastMessage = `Would send ${box.label} ${Math.round(box.score * 100)}%`;
       } else {
         const result = await postDetection(detection);
         this.sentCount += 1;
         const pin = result.pothole_ids?.[0];
-        this.lastMessage = pin ? `On the map as ${pin}` : "Sent. Shows on the map after a 2nd sighting nearby";
+        this.lastMessage = pin ? "Sent, on the map" : "Sent, shows after a 2nd sighting";
       }
     } catch (err) {
       console.error("[live] send failed:", err);

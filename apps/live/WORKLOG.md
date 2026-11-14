@@ -4,6 +4,21 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · Status box cleanup, icon buttons, loading box (Ado + Claude)
+
+Branch: `live/icons-and-loader`.
+
+- Status box: removed the grey speed line and the divider under the header. Speed now
+  sits in the engine button's tooltip and the console.
+- "Flip camera" and "Switch engine" are now square icon buttons (Lucide
+  "switch-camera" and "cpu", inline SVG, ISC license).
+- Last result is one short line, no grey box: "Would send pothole 87%", "Sent, on the
+  map", "Pothole seen, waiting for GPS".
+- Loading box (shown while the camera first starts): plain steps ("Starting the
+  detector", "Downloading the pothole model", "Getting ready") and a yellow bar that
+  fills with the real download progress.
+- Checked locally with a fake camera: bar goes 5% to 90% in about 70 steps, then hides.
+
 ## 2026-11-14 · Status box and start screen restyled (Ado + Claude)
 
 Branch: `live/stats-box-polish`.
