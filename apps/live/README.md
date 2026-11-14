@@ -57,8 +57,8 @@ any model file in git.
 
 | Model | In the bucket | Status |
 |---|---|---|
-| Stock YOLO11n (COCO, 80 classes) | `models/yolo11n.onnx` | Uploaded, used now |
-| Pothole model (1 class) | `models/pothole.onnx` | Waiting on `best.pt` from Muq (#58) |
+| Pothole model (YOLO11n, 1 class, mAP50 0.85) | `models/pothole.onnx` | Used now (#39) |
+| Stock YOLO11n (COCO, 80 classes) | `models/yolo11n.onnx` | Old placeholder, kept for testing |
 
 To upload (needs the R2 keys in the repo's `.env`):
 ```bash
