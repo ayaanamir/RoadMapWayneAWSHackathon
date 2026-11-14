@@ -227,7 +227,7 @@ export class DriveRecorder {
       elapsedMs: this.recording ? Date.now() - this.startedAt : 0,
       clips: this.segments.filter((f) => /\.(mp4|webm)$/.test(f.name)).length,
       fixes: this.fixes.length,
-      accuracy: last ? last.accuracy_m : null,
+      lastFixAt: last ? Date.parse(last.t) : 0,
       files: this.segments,
       problem: this.problem,
     };

@@ -24,6 +24,9 @@ export class Reporter {
     this.lastSentAt = 0;       // when the last send started (ms)
     this.sentCount = 0;        // how many detections went through
     this.lastMessage = DRY_RUN ? "Practice mode" : "";
+    // While recording a drive, say "No signal" when readings stop coming in. Off
+    // otherwise: a laptop that is not moving gets few readings and is still fine.
+    this.flagStale = false;
     // Color of the message: "good" green, "warn" amber, "bad" red, "quiet" gray, "" normal.
     this.lastTone = DRY_RUN ? "quiet" : "";
 
@@ -158,6 +161,9 @@ export class Reporter {
     if (this.gpsProblem) {
       gps = this.gpsProblem;
       gpsTone = this.gpsProblem === "Blocked" ? "bad" : "warn";
+    } else if (p && this.flagStale && Date.now() - p.timestamp > 10_000) {
+      gps = "No signal"; // last reading is old: tunnel, garage, lost fix
+      gpsTone = "warn";
     } else if (p) {
       gps = `±${Math.round(p.coords.accuracy)} m`;
       gpsTone = p.coords.accuracy > GPS_MAX_ERROR_M ? "warn" : ""; // too rough to send

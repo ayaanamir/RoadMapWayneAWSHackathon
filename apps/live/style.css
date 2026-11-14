@@ -272,46 +272,42 @@ button:disabled { opacity: 0.5; cursor: default; }
 .stats-rows div[hidden],
 .icon[hidden] { display: none; }
 
-/* Record button: red dot icon while recording. */
-#record[aria-pressed="true"] { background: #b3261e; border-color: transparent; }
+/* One red for recording: the dot, and the record button while it is on. */
+:root { --rec: #f04438; }
+#record[aria-pressed="true"] { background: var(--rec); border-color: transparent; }
 #record[aria-pressed="true"] svg { stroke: #ffffff; }
 
-/* Big REC badge, top right: readable at a glance from the driver's seat. */
+/* REC block at the top of the status box: big dot and time, then a quiet reminder. */
 #rec {
-  position: absolute;
-  top: max(16px, env(safe-area-inset-top));
-  right: 16px;
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   column-gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--panel);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  margin: 12px 0 4px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(240, 68, 56, 0.14);
 }
 #rec[hidden] { display: none; }
 .rec-dot {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: #f04438;
+  background: var(--rec);
   animation: rec-blink 2s steps(1) infinite;
 }
 #rec b { font: 500 28px/32px var(--mono); font-variant-numeric: tabular-nums; }
-#rec small { grid-column: 1 / -1; margin-top: 4px; color: var(--text-2); font-size: 12px; text-align: right; }
+#rec small { grid-column: 1 / -1; margin-top: 4px; color: var(--text-2); font-size: 13px; }
 @keyframes rec-blink { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
 
 /* Files from the drive, folded away so there is nothing to tap while driving. */
-#files { margin-top: 12px; font-size: 13px; }
+#files { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
 #files[hidden] { display: none; }
 #files summary { cursor: pointer; color: var(--text-2); }
-#files ul { margin: 8px 0 0; padding: 0; list-style: none; max-height: 30vh; overflow-y: auto; }
+#files ul { margin: 8px 0 0; padding: 0; list-style: none; max-height: 30vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised) transparent; }
 #files li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
-#files li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 11px; }
+#files li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 12px; }
 #files li button { padding: 2px 8px; font-size: 12px; }
 #files li small { color: var(--muted); }
 

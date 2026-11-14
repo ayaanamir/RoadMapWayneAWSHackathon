@@ -47,14 +47,6 @@
       <button id="leftover" type="button" class="link" hidden></button>
     </section>
 
-    <!-- Drive recording (recorder.js): big red dot and time, top right, easy to see
-         from the driver's seat. -->
-    <div id="rec" role="status" hidden>
-      <span class="rec-dot" aria-hidden="true"></span>
-      <b id="rec-time">0:00</b>
-      <small>Keep this page open</small>
-    </div>
-
     <!-- Status box. Top: which model and whether it sends. Middle: what matters while
          filming. Bottom: last result and three icon buttons. -->
     <aside id="stats" hidden>
@@ -63,12 +55,19 @@
         <b id="stat-model">-</b>
         <span id="stat-mode"></span>
       </header>
+      <!-- Drive recording (recorder.js): big red dot and time, readable at a glance
+           from the driver's seat. Only while recording. -->
+      <div id="rec" role="status" hidden>
+        <span class="rec-dot" aria-hidden="true"></span>
+        <b id="rec-time">0:00</b>
+        <small>Keep this page open</small>
+      </div>
       <dl class="stats-rows">
         <div data-detect><dt>In view</dt><dd id="stat-count">-</dd></div>
         <div><dt>GPS</dt><dd id="stat-gps">-</dd></div>
         <div data-detect><dt>Sent to map</dt><dd id="stat-sent">0</dd></div>
-        <div data-rec hidden><dt>GPS fixes</dt><dd id="stat-fixes">0</dd></div>
-        <div data-rec hidden><dt>Clips</dt><dd id="stat-clips">0</dd></div>
+        <div data-rec hidden><dt>Track</dt><dd id="stat-fixes">0 points</dd></div>
+        <div data-rec hidden><dt>Video</dt><dd id="stat-clips">0 clips</dd></div>
       </dl>
       <p id="stat-message" hidden></p>
       <div class="actions">

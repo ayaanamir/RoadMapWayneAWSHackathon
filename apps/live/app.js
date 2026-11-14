@@ -66,7 +66,13 @@ const recentRunTimes = [];    // when the last few runs finished, for checks/sec
 
 startButton.addEventListener("click", start);
 recButton.addEventListener("click", toggleRecording);
-setInterval(() => { if (drive.recording) showDriveState(drive.state()); }, 1000); // the clock
+// Once a second: the REC clock, and the GPS row (so a lost signal shows even when no
+// new reading comes in).
+setInterval(() => {
+  reporter.flagStale = drive.recording;
+  if (drive.recording) showDriveState(drive.state());
+  reporter.changed();
+}, 1000);
 setUpRecordingScreen();
 document.getElementById("switch-backend").addEventListener("click", switchBackend);
 document.getElementById("switch-camera").addEventListener("click", flipCamera);
@@ -369,15 +375,19 @@ function setUpRecordingScreen() {
 }
 
 let filesShown = "";
-function showDriveState({ recording, elapsedMs, clips, fixes, files, problem }) {
+function showDriveState({ recording, elapsedMs, clips, fixes, lastFixAt, files, problem }) {
   recBadge.hidden = !recording;
   recTime.textContent = clock(elapsedMs);
   recButton.setAttribute("aria-pressed", String(recording));
   recButton.title = recording ? "Stop recording" : "Record drive";
   document.getElementById("switch-camera").disabled = recording;
   document.querySelectorAll("[data-rec]").forEach((el) => { el.hidden = !recording && !clips; });
-  stats.fixes.textContent = String(fixes); // accuracy is already on the GPS row
-  stats.clips.textContent = String(clips);
+  // Track: how many GPS points are logged. Amber when no new point came in for a
+  // while (tunnel, lost signal), since those minutes cannot be placed on the map.
+  const stale = recording && Date.now() - lastFixAt > 10_000;
+  stats.fixes.textContent = `${fixes} ${fixes === 1 ? "point" : "points"}`;
+  stats.fixes.dataset.tone = stale ? "warn" : "";
+  stats.clips.textContent = `${clips} ${clips === 1 ? "clip" : "clips"}`;
   if (problem) {
     stats.message.textContent = problem;
     stats.message.dataset.tone = "bad";
@@ -390,10 +400,14 @@ function showDriveState({ recording, elapsedMs, clips, fixes, files, problem }) 
   filesShown = key;
   filesBox.hidden = files.length === 0;
   document.getElementById("files-count").textContent = files.length ? `(${files.length})` : "";
-  filesList.replaceChildren(...files.map((f) => {
+  // GPS track first, then the clips. Short names: the drive's start time is the same
+  // for all of them and is in the full file name that gets saved.
+  const sorted = [...files].sort((a, b) => b.name.endsWith(".gpx") - a.name.endsWith(".gpx"));
+  filesList.replaceChildren(...sorted.map((f) => {
     const li = document.createElement("li");
     const name = document.createElement("span");
-    name.textContent = f.name;
+    name.textContent = f.name.endsWith(".gpx") ? "GPS track (.gpx)" : f.name.replace(/^drive_\w+?Z_/, "");
+    name.title = f.name;
     li.append(name);
     if (f.url) {
       const save = document.createElement("button");
@@ -403,7 +417,7 @@ function showDriveState({ recording, elapsedMs, clips, fixes, files, problem }) 
       li.append(save);
     } else {
       const gone = document.createElement("small");
-      gone.textContent = "cleared";
+      gone.textContent = "Not kept"; // older clips are dropped from memory
       li.append(gone);
     }
     return li;
