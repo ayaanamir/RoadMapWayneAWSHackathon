@@ -18,6 +18,12 @@
          always line up with the picture. -->
     <canvas id="view" aria-label="Camera view with detected objects"></canvas>
 
+    <!-- The camera feed. Invisible: we copy its frames onto the canvas above. -->
+    <video id="camera" playsinline muted></video>
+
+    <!-- Messages shown on top of the camera picture while the model loads. -->
+    <p id="banner" role="status" hidden></p>
+
     <!-- Shown until the camera starts. Browsers need a tap before using the camera. -->
     <section id="start-screen">
       <h1>Still There?</h1>
@@ -38,5 +44,19 @@
       </div>
     </aside>
   </main>
+
+  <!-- Safety check. If app.js fails to load (old browser, bad network), the Start
+       button would do nothing. This plain script still runs and says so. -->
+  <script>
+    window.addEventListener("error", function (e) {
+      if (window.liveReady) return;
+      document.getElementById("status").textContent = "Error: " + e.message;
+    });
+    document.getElementById("start").addEventListener("click", function () {
+      if (window.liveReady) return;
+      document.getElementById("status").textContent =
+        "The page script did not load. Check your connection and reload the page.";
+    });
+  </script>
 </body>
 </html>

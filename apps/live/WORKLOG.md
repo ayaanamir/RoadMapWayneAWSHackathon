@@ -4,6 +4,24 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · #38 fix 3: camera never showed on iPhone 16 Safari (Ado + Claude)
+
+Branch: `live/iphone-camera`.
+
+- Real bug: `#start-screen` had `display: flex` in CSS, which beats the `hidden`
+  switch. So the start screen never went away, even with the camera running under it.
+  Added `#start-screen[hidden] { display: none; }`.
+- Camera now opens first, right after the tap (iPhone Safari is strict about this),
+  and shows straight away. The model loads after, with a message on top of the picture.
+- The `<video>` is now on the page (invisible). iPhone Safari can give blank frames from
+  a video that is not on the page.
+- Clear messages for camera problems (blocked permission, no camera, camera busy), and
+  any unexpected error now shows on screen, since a phone has no console.
+- Small plain script in `index.html` says so if `app.js` fails to load, instead of the
+  button doing nothing.
+- Tested on laptop Chrome with a fake camera (the bus photo as a video stream): tap
+  Start, start screen hides, picture shows, 5 boxes drawn, stats panel filled.
+
 ## 2026-11-14 · #38 fix 2: stuck on "Starting model (wasm)" on a phone (Ado + Claude)
 
 Branch: `live/wasm-reload-fallback`.
