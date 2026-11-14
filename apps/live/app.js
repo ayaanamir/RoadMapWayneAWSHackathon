@@ -14,7 +14,7 @@
 
 import { Detector, EngineFailed } from "./detector.js";
 import { Reporter } from "./reporter.js";
-import { BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend } from "./config.js";
+import { BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend, MODEL_URL, DRY_RUN } from "./config.js";
 
 const view = document.getElementById("view");
 const ctx = view.getContext("2d");
@@ -24,6 +24,7 @@ const statusText = document.getElementById("status");
 const banner = document.getElementById("banner");
 const stats = {
   panel: document.getElementById("stats"),
+  model: document.getElementById("stat-model"),
   backend: document.getElementById("stat-backend"),
   ms: document.getElementById("stat-ms"),
   fps: document.getElementById("stat-fps"),
@@ -81,6 +82,7 @@ async function start() {
   try {
     await detector.load(say);
     stats.backend.textContent = detector.backend;
+    stats.model.textContent = modelName();
     stats.panel.hidden = false;
     banner.hidden = true;
     // WebGPU was picked by hand and it worked: stop forcing WASM on this phone.
@@ -226,6 +228,17 @@ async function flipCamera() {
   } catch (err) {
     console.error("[live] could not switch camera:", err);
   }
+}
+
+// Short model name for the stats box, so it is clear which model is running.
+// "pothole" = Muq's pothole model, "stock" = the old 80-object placeholder.
+// "(dry)" means nothing is sent to the map.
+function modelName() {
+  const file = MODEL_URL.split("/").pop();
+  const name = file === "pothole.onnx" ? "pothole"
+    : file === "yolo11n.onnx" ? "stock"
+    : file.replace(/\.onnx$/, "");
+  return DRY_RUN ? `${name} (dry)` : name;
 }
 
 // Update the GPS / sent lines in the stats box.

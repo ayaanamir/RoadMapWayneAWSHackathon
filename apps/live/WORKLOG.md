@@ -4,6 +4,18 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · Model name in the stats box (Ado + Claude)
+
+Branch: `live/show-model-name`.
+
+- Stats box now starts with "Model": `pothole`, `stock`, or the file name, plus
+  `(dry)` when nothing is sent. Added after the phone ran the old model by mistake.
+- #46 done: Ado pointed the phone at a pothole photo and away 10+ times; it boxed the
+  pothole every time and cleared every time.
+- Heads-up: on the bus test photo (no pothole), the pothole model drew 1 "pothole" box.
+  Fine for the demo (phone sightings are "unverified" and cannot turn a pin yellow), but
+  keep the phone off dark road patches and shadows when demoing.
+
 ## 2026-11-14 · #39 pothole model in (Ado + Claude)
 
 Branch: `live/pothole-model`.
