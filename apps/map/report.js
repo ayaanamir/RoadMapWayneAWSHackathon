@@ -103,7 +103,7 @@ function liveUrl(p) {
 
 // ---- Small map: OpenStreetMap tiles around the spot, pin in the middle ----
 
-function mapTiles(lat, lon, w = 300, h = 200, z = 17) {
+function mapTiles(lat, lon, w = 300, h = 170, z = 17) {
   const scale = 256 * 2 ** z;
   const x = ((lon + 180) / 360) * scale;
   const rad = (lat * Math.PI) / 180;
@@ -164,14 +164,14 @@ function render(p) {
       <td>${issue(r)}</td>
       <td class="num">${esc(date(r.created_at))}</td>
       <td class="num">${r.closed_at ? esc(date(r.closed_at)) : '–'}</td>
-      <td class="num">${r.closed_at ? daysBetween(r.created_at, r.closed_at) : '–'}</td>
+      <td class="num r">${r.closed_at ? daysBetween(r.created_at, r.closed_at) : '–'}</td>
       <td>${esc(r.status || '')}</td>
     </tr>`).join('');
   const ourRows = f.dets.map((d) => `<tr class="${d.verdict === 'pothole' ? 'hit' : ''}">
       <td class="num">${esc(when(d.captured_at))}</td>
       <td>${d.source === 'live' ? 'Phone' : 'Dash camera'}</td>
       <td>${esc(VERDICT[d.verdict] || d.verdict)}</td>
-      <td class="num">${Math.round(d.confidence * 100)}%</td>
+      <td class="num r">${Math.round(d.confidence * 100)}%</td>
       <td>${esc(d.verdict_reason || '')}${d.image_url ? ` <a href="${esc(d.image_url)}" target="_blank" rel="noopener">Photo</a>` : ''}</td>
     </tr>`).join('');
 
@@ -189,86 +189,104 @@ function render(p) {
   sheet.innerHTML = `
     <!-- ===== Page 1: the request ===== -->
     <header class="doc-head">
-      <div>
+      <div class="doc-from">
         <p class="doc-brand">Still There</p>
-        <p class="doc-type">${esc(req.title)}</p>
+        <p class="doc-sub">Road condition evidence, Detroit</p>
       </div>
-      <dl class="doc-ref">
-        <div><dt>Reference</dt><dd>${ref}</dd></div>
-        <div><dt>Prepared</dt><dd>${esc(today)}</dd></div>
-      </dl>
+      <table class="doc-ref">
+        <tr><th>Reference</th><td>${ref}</td></tr>
+        <tr><th>Prepared</th><td>${esc(today)}</td></tr>
+        <tr><th>Status</th><td>${esc(LABEL[p.state] || p.state)}</td></tr>
+      </table>
     </header>
 
-    <h1>${esc(p.address || 'Unnamed spot')}</h1>
-    <p class="state ${esc(p.state)}">${esc(LABEL[p.state] || p.state)}</p>
+    <h1>${esc(req.title)}</h1>
+    <p class="doc-for">${esc(p.address || 'Unnamed location')}</p>
 
-    <section class="where">
-      <dl class="route">
-        <div><dt>To</dt><dd>${esc(owner.agency.name)}</dd></div>
-        <div><dt>Jurisdiction</dt><dd>${esc(owner.reason)}</dd></div>
-        <div><dt>Submit through</dt><dd>${esc(owner.agency.via)}</dd></div>
-        <div><dt>Location</dt><dd>${esc(p.address || '')}<br><span class="num">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</span>
-          <a class="no-print-link" href="https://www.google.com/maps?q=${p.lat},${p.lon}" target="_blank" rel="noopener">Open in Maps</a></dd></div>
-      </dl>
-      ${mapTiles(p.lat, p.lon)}
+    <section class="block where">
+      <h2><span>1</span>Location and jurisdiction</h2>
+      <div class="where-grid">
+        <table class="fields">
+          <tr><th>Addressed to</th><td>${esc(owner.agency.name)}</td></tr>
+          <tr><th>Jurisdiction</th><td>${esc(owner.reason)}</td></tr>
+          <tr><th>Submit through</th><td>${esc(owner.agency.via)}</td></tr>
+          <tr><th>Address</th><td>${esc(p.address || '–')}</td></tr>
+          <tr><th>Coordinates</th><td class="num">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}
+            <a class="no-print-link" href="https://www.google.com/maps?q=${p.lat},${p.lon}" target="_blank" rel="noopener">Open in Maps</a></td></tr>
+        </table>
+        ${mapTiles(p.lat, p.lon)}
+      </div>
     </section>
 
-    <section class="request">
-      <h2>Request</h2>
+    <section class="block request">
+      <h2><span>2</span>Request</h2>
       <p class="ask">${esc(req.ask)}</p>
-      <p>${esc(req.basis)}</p>
+      <p class="basis">${esc(req.basis)}</p>
     </section>
 
-    ${keyFacts.length ? `<dl class="key">${keyFacts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
+    ${keyFacts.length ? `<section class="block">
+      <h2><span>3</span>Key dates</h2>
+      <dl class="key">${keyFacts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+    </section>` : ''}
 
-    <section class="photos">
-      <figure>
-        ${img(ours?.image_url, 'Our camera photo', 'Not seen by our cameras yet')}
-        <figcaption>${ours
-          ? `<b>Our camera, ${esc(when(ours.captured_at))}</b>
-             <span>${ours.source === 'live' ? 'Phone' : 'Dash camera'} · ${esc(VERDICT[ours.verdict] || ours.verdict)}${ours.verdict_reason ? `. ${esc(ours.verdict_reason)}` : ''}</span>`
-          : '<b>Our camera</b>'}</figcaption>
-      </figure>
-      <figure>
-        ${cityReport?.photo_url ? img(cityReport.photo_url, 'City report photo', '')
-          : `<div class="none">${cityReport ? 'No photo on the city report' : 'Never reported to the city'}</div>`}
-        <figcaption>${cityReport
-          ? `<b>City report ${issue(cityReport)}</b><span>Filed ${esc(date(cityReport.created_at))}${cityReport.closed_at ? `, closed ${esc(date(cityReport.closed_at))}` : ''}</span>`
-          : '<b>City report</b>'}</figcaption>
-      </figure>
+    <section class="block">
+      <h2><span>4</span>Photo evidence</h2>
+      <div class="photos">
+        <figure>
+          ${img(ours?.image_url, 'Our camera photo', 'Not seen by our cameras yet')}
+          <figcaption>${ours
+            ? `<b>A. Our camera, ${esc(when(ours.captured_at))}</b>
+               <span>${ours.source === 'live' ? 'Phone' : 'Dash camera'}, result: ${esc(VERDICT[ours.verdict] || ours.verdict)}${ours.verdict_reason ? `. ${esc(ours.verdict_reason)}` : ''}</span>`
+            : '<b>A. Our camera</b>'}</figcaption>
+        </figure>
+        <figure>
+          ${cityReport?.photo_url ? img(cityReport.photo_url, 'City report photo', '')
+            : `<div class="none">${cityReport ? 'No photo on the city report' : 'Never reported to the city'}</div>`}
+          <figcaption>${cityReport
+            ? `<b>B. City report ${issue(cityReport)}</b><span>Filed ${esc(date(cityReport.created_at))}${cityReport.closed_at ? `, closed ${esc(date(cityReport.closed_at))}` : ''}</span>`
+            : '<b>B. City report</b>'}</figcaption>
+        </figure>
+      </div>
     </section>
 
     <!-- ===== Page 2: the supporting record ===== -->
     <section class="record">
-      <h2>City reports</h2>
-      ${f.reports.length ? `<table>
-        <thead><tr><th>Issue</th><th>Filed</th><th>Closed</th><th>Days open</th><th>Status</th></tr></thead>
-        <tbody>${cityRows}</tbody>
-      </table>` : '<p class="none-line">None. This spot has not been reported to the city.</p>'}
+      <section class="block">
+        <h2><span>5</span>City service requests</h2>
+        ${f.reports.length ? `<table class="data">
+          <thead><tr><th>Issue</th><th>Filed</th><th>Closed</th><th class="r">Days open</th><th>Status</th></tr></thead>
+          <tbody>${cityRows}</tbody>
+        </table>` : '<p class="none-line">None. This location has not been reported to the city.</p>'}
+      </section>
 
-      <h2>Our sightings</h2>
-      ${f.dets.length ? `<table>
-        <thead><tr><th>When</th><th>Camera</th><th>Result</th><th>Detector</th><th>Note</th></tr></thead>
-        <tbody>${ourRows}</tbody>
-      </table>` : '<p class="none-line">None yet.</p>'}
+      <section class="block">
+        <h2><span>6</span>Our sightings</h2>
+        ${f.dets.length ? `<table class="data">
+          <thead><tr><th>Date and time</th><th>Camera</th><th>Result</th><th class="r">Confidence</th><th>Note</th></tr></thead>
+          <tbody>${ourRows}</tbody>
+        </table>` : '<p class="none-line">None yet.</p>'}
+      </section>
 
-      <div class="about">
-        <section>
-          <h2>How we found it</h2>
+      <section class="block about">
+        <div>
+          <h2><span>7</span>Method</h2>
           <p>A phone or dash camera in a moving car records the road. A detection model marks
-          possible potholes and saves the photo with its time and GPS position. A second check
+          possible potholes and saves each photo with its time and GPS position. A second check
           by an AI vision model labels each photo as pothole, patch or shadow; only "pothole"
-          counts as a sighting. Sightings join city reports within 50 m.</p>
-          <h2>Data sources</h2>
+          counts as a sighting. Sightings are matched to city reports within 50 m.</p>
+          <h2><span>8</span>Data sources</h2>
           <p>City reports: Improve Detroit (SeeClickFix), public records. Report locations are
           geocoded by the city and can be 10 to 50 m off. Photos and sightings: Still There
-          cameras. Road owner: picked from the street name.</p>
-        </section>
+          cameras. Road owner: determined from the street name.</p>
+        </div>
         <figure class="qr">
           ${qrSvg(liveUrl(p))}
-          <figcaption>Live evidence page<br><span class="num">${esc(liveUrl(p).replace(/^https?:\/\//, ''))}</span></figcaption>
+          <figcaption>Scan for the live evidence page</figcaption>
         </figure>
-      </div>
+      </section>
+
+      <p class="attest">Prepared automatically by Still There on ${esc(today)} from public city records
+      and our camera data. Figures are not edited by hand. Reference ${ref}.</p>
     </section>`;
 
   // Screen-only panel: the message for the road owner's form, and a demo Send.
