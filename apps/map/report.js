@@ -77,7 +77,18 @@ function render(p) {
   const f = facts(p);
   document.title = `${p.address || p.pothole_id} · Evidence report`;
   document.getElementById('back').href = `/?id=${encodeURIComponent(p.pothole_id)}`;
-  const cityPhoto = [...f.reports].reverse().find((r) => r.photo_url)?.photo_url;
+  const cityReport = [...f.reports].reverse().find((r) => r.photo_url) || f.reports.at(-1);
+  const cityPhoto = cityReport?.photo_url;
+  const issueLink = (r) => `<a href="${esc(r.issue_url)}" target="_blank" rel="noopener">Issue #${esc(r.issue_id)} ↗</a>`;
+  const issueCard = (r) => `<a class="issue-card" href="${esc(r.issue_url)}" target="_blank" rel="noopener">
+      <span class="issue-no">Issue #${esc(r.issue_id)}</span>
+      <span class="issue-status ${esc((r.status || '').toLowerCase())}">${esc(r.status)}</span>
+      <span class="issue-line">Filed ${esc(date(r.created_at))}</span>
+      <span class="issue-line">${r.closed_at ? `Closed ${esc(date(r.closed_at))} · ${plural(daysBetween(r.created_at, r.closed_at), 'day')} later` : 'Still open'}</span>
+      <span class="issue-addr">${esc(r.address)}</span>
+      ${f.reports.length > 1 ? `<span class="issue-more">+ ${plural(f.reports.length - 1, 'more report')} here</span>` : ''}
+      <span class="issue-open">${esc(r.issue_url)}</span>
+    </a>`;
   const ours = f.latestHit || f.dets.at(-1);
   const img = (src, alt, none) => src
     ? `<img src="${esc(src)}" alt="${esc(alt)}" onerror="this.outerHTML='<div class=none>Image unavailable</div>'">`
@@ -109,9 +120,9 @@ function render(p) {
       <div><dt>Times we saw it</dt><dd>${f.dets.filter((d) => d.verdict === 'pothole').length}</dd></div>
       <div><dt>Days since closed</dt><dd>${sinceClose ?? '–'}</dd></div>
     </dl>
-    <h2>City photo and ours</h2>
+    <h2>The city's record and ours</h2>
     <div class="photos">
-      <figure>${img(cityPhoto, 'City report photo', 'No photo on the city report')}<figcaption>From the city report</figcaption></figure>
+      <figure>${cityPhoto ? img(cityPhoto, 'City report photo', '') : cityReport ? issueCard(cityReport) : '<div class="none">Never reported to the city</div>'}<figcaption>${cityReport ? `From the city report · ${issueLink(cityReport)}` : 'From the city report'}</figcaption></figure>
       <figure>${img(ours?.image_url, 'Our frame', 'Not driven yet')}
         <figcaption>${ours ? `Ours, ${esc(when(ours.captured_at))}` : 'Our camera'}</figcaption>
         ${ours ? `<div class="verdict">${esc(VERDICT[ours.verdict] || ours.verdict)}${ours.verdict_reason ? `. ${esc(ours.verdict_reason)}` : ''}</div>` : ''}

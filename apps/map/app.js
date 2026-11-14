@@ -42,6 +42,22 @@ const fmtDate = (iso) => iso
 const fmtTime = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Detroit' });
 const days = (a, b) => Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// The city's own record, shown where its photo would be (most reports have no photo).
+const issueLink = (r) => `<a href="${esc(r.issue_url)}" target="_blank" rel="noopener">Issue #${esc(r.issue_id)} ↗</a>`;
+function issueCard(r, total) {
+  const closed = r.closed_at
+    ? `Closed ${esc(fmtDate(r.closed_at))} · ${days(r.created_at, r.closed_at)} ${days(r.created_at, r.closed_at) === 1 ? 'day' : 'days'} later`
+    : 'Still open';
+  return `<a class="issue-card" href="${esc(r.issue_url)}" target="_blank" rel="noopener">
+    <span class="issue-no">Issue #${esc(r.issue_id)}</span>
+    <span class="issue-status ${esc((r.status || '').toLowerCase())}">${esc(r.status)}</span>
+    <span class="issue-line">Filed ${esc(fmtDate(r.created_at))}</span>
+    <span class="issue-line">${closed}</span>
+    <span class="issue-addr">${esc(r.address)}</span>
+    ${total > 1 ? `<span class="issue-more">+ ${total - 1} more ${total - 1 === 1 ? 'report' : 'reports'} here</span>` : ''}
+    <span class="issue-open">View on Improve Detroit ↗</span>
+  </a>`;
+}
 const order = (p) => ({ still_there: 3, unreported: 2, fixed_confirmed: 1 }[p.state] || 0);
 
 async function load() {
@@ -114,12 +130,16 @@ function renderPanel(p) {
   }
   events.sort((a, b) => new Date(a.at) - new Date(b.at));
 
-  const cityPhoto = [...p.city_reports].reverse().find((r) => r.photo_url)?.photo_url;
+  // Evidence from the city: the report with a photo if any, else the newest report.
+  const byNewest = [...p.city_reports].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const cityReport = byNewest.find((r) => r.photo_url) || byNewest[0];
   const ourFrame = p.detections.filter((d) => d.verdict === 'pothole').at(-1) || p.detections.at(-1);
-  const photos = (cityPhoto || ourFrame) ? `
+  const photos = (cityReport || ourFrame) ? `
     <div class="photos">
-      <figure>${cityPhoto ? `<img src="${esc(cityPhoto)}" alt="City report photo" onerror="this.outerHTML='<div class=none>Photo unavailable</div>'">` : '<div class="none">No city photo</div>'}
-        <figcaption>City report</figcaption></figure>
+      <figure>${cityReport?.photo_url
+          ? `<img src="${esc(cityReport.photo_url)}" alt="City report photo" onerror="this.outerHTML='<div class=none>Photo unavailable</div>'">`
+          : cityReport ? issueCard(cityReport, p.city_reports.length) : '<div class="none">Never reported to the city</div>'}
+        <figcaption>${cityReport ? `City report · ${issueLink(cityReport)}` : 'City report'}</figcaption></figure>
       <figure>${ourFrame ? `<img src="${esc(ourFrame.image_url)}" alt="Our latest frame" onerror="this.outerHTML='<div class=none>Frame unavailable</div>'">` : '<div class="none">Not driven yet</div>'}
         <figcaption>${ourFrame ? 'Ours, ' + esc(fmtTime(ourFrame.captured_at)) : 'Our footage'}</figcaption>
         ${ourFrame ? `<div class="verdict">${esc(VERDICT[ourFrame.verdict] || ourFrame.verdict)}${ourFrame.verdict_reason ? '. ' + esc(ourFrame.verdict_reason) : ''}</div>` : ''}</figure>
