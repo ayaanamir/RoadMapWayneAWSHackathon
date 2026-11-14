@@ -1,6 +1,8 @@
 # Area: `apps/live/` — owner: Live
 
-Also read the root `AGENTS.md` and `shared/CONTRACTS.md` (v2).
+Also read the root `AGENTS.md` and `shared/CONTRACTS.md` (v3).
+Before starting, read `WORKLOG.md` here to see what is already in progress, and add a
+short entry for your task.
 
 ## Job
 Phone page served by Vercel at `/live` (HTTPS, so camera + GPS work):
