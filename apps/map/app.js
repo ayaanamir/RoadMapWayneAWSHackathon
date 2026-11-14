@@ -42,7 +42,7 @@ const LABEL = {
   unknown: 'Not enough evidence',
 };
 // Short names for the list tags.
-const SHORT = { still_there: 'Still there', unreported: 'Not reported', fixed_confirmed: 'Fixed' };
+const SHORT = { still_there: 'Still There', unreported: 'Not Reported', fixed_confirmed: 'Fixed' };
 const VERDICT = { pothole: 'Pothole', patch: 'Patched', shadow: 'Shadow, not a pothole', unverified: 'Not checked yet' };
 
 const map = L.map('map', { zoomControl: true, attributionControl: true }).setView(NEWLAB, 14);
@@ -138,10 +138,10 @@ const byId = (id) => potholes.find((p) => p.pothole_id === id);
 const stateOf = (p) => (p.state === 'unknown' ? 'reported_only' : p.state);
 const countState = (state) => potholes.filter((p) => stateOf(p) === state).length;
 const LEGEND = [
-  ['still_there', 'Still there'],
-  ['unreported', 'Not reported'],
+  ['still_there', 'Still There'],
+  ['unreported', 'Not Reported'],
   ['fixed_confirmed', 'Fixed'],
-  ['reported_only', 'Not checked'],
+  ['reported_only', 'Not Checked'],
 ];
 let filter = null; // a state from LEGEND, or null for all spots
 
@@ -222,7 +222,7 @@ function renderList() {
       || b.f.reports.length - a.f.reports.length
       || String(b.f.reports.at(-1)?.created_at || '').localeCompare(String(a.f.reports.at(-1)?.created_at || '')));
 
-  setPanel(`
+  setPanel(`<div class="list-view">
     <!-- Legend: what each pin color means, with counts. Click one to show only those. -->
     <div class="legend" role="group" aria-label="Pin colors">
       ${LEGEND.map(([state, name]) => `<button type="button" class="chip" data-state="${state}" aria-pressed="${filter === state}">
@@ -230,8 +230,9 @@ function renderList() {
     </div>
     <header class="panel-head">
       <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
-      <p class="panel-sub">${rows.length ? 'Most important first' : 'None yet'}</p>
+
     </header>
+    ${rows.length ? '' : emptyState(filter)}
     <ul class="spots">
       ${rows.map(({ p, f }) => `
         <li><button type="button" class="spot-row" data-id="${esc(p.pothole_id)}">
@@ -242,7 +243,24 @@ function renderList() {
           </span>
           ${order(p) > 0 ? `<span class="spot-tag ${esc(p.state)}">${esc(SHORT[p.state])}</span>` : ''}
         </button></li>`).join('')}
-    </ul>`);
+    </ul></div>`);
+}
+
+// Shown when a legend filter has no spots: the big pin for that state, a short phrase,
+// and a way back to all spots.
+const EMPTY = {
+  still_there: 'No closed reports seen still there yet',
+  unreported: 'Our cameras have not found any yet',
+  fixed_confirmed: 'No repairs confirmed by our cameras yet',
+  reported_only: 'Every spot has been checked',
+};
+function emptyState(state) {
+  return `<div class="empty-state">
+    ${pinSvg(state, 64)}
+    <p class="empty-title">None yet</p>
+    <p class="empty-sub">${esc(EMPTY[state] || '')}</p>
+    <button type="button" class="empty-action" data-clear>Show all spots</button>
+  </div>`;
 }
 
 function renderSpot(p) {
@@ -316,6 +334,10 @@ function renderSpot(p) {
 
 // Clicks inside the panel: a legend chip, a spot in the list, or the back button.
 panel.addEventListener('click', (e) => {
+  if (e.target.closest('[data-clear]')) {
+    filter = null;
+    return renderList();
+  }
   const chip = e.target.closest('.chip');
   if (chip) {
     filter = filter === chip.dataset.state ? null : chip.dataset.state;
