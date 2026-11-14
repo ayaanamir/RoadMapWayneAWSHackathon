@@ -19,30 +19,51 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 400 16px/1.5 var(--sans); }
-body { display: flex; flex-direction: column; }
 
-.bar { display: flex; align-items: center; gap: 24px; min-height: 72px; padding: 12px 24px; background: var(--bg-deep); border-bottom: 1px solid var(--line); }
+/* Page: two full-height columns. Left: top bar over the map. Right: the sidebar, from
+   the very top to the bottom. (main.layout steps aside so its children join this grid.) */
+:root { --side: 400px; }
+body { display: grid; grid-template-columns: 1fr var(--side); grid-template-rows: auto 1fr; }
+.layout { display: contents; }
+.bar { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 24px; min-height: 72px; min-width: 0; padding: 12px 24px; background: #2c2e33; border-bottom: 1px solid rgba(237, 237, 237, 0.1); }
+#map { grid-column: 1; grid-row: 2; }
+.panel { grid-column: 2; grid-row: 1 / span 2; min-height: 0; }
+#map { min-height: 0; }
 .brand { white-space: nowrap; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
 .brand::before { content: ""; display: inline-block; width: 24px; height: 4px; margin: 0 12px 4px 0; background: var(--paint); vertical-align: middle; }
-/* Top bar: what it is, then the totals on the right, then live or sample data. */
-.tagline { margin: 0; padding-left: 24px; border-left: 1px solid var(--line); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.totals { display: flex; gap: 32px; margin: 0 0 0 auto; flex-shrink: 0; }
-.totals div { display: flex; flex-direction: column; }
-.totals dt { font-size: 13px; }
-.totals dd { margin: 0; font: 500 22px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
+/* Top bar: the name, then the totals on the right, then live or sample data. */
+.totals { display: flex; align-items: baseline; gap: 24px; margin: 0 0 0 auto; flex-shrink: 0; }
+/* Number and label on one line, e.g. "6 city reports". */
+.totals div { display: flex; align-items: baseline; gap: 8px; }
+.totals dt { font-size: 15px; white-space: nowrap; }
+.totals dd { margin: 0; font: 500 22px/1 var(--mono); font-variant-numeric: tabular-nums; }
 .totals .still dd, .totals .still dt { color: var(--paint); }
 .totals .still dd { font-weight: 600; }
-.source { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; white-space: nowrap; }
-.source::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--reported); }
+/* Live or sample data: a quiet tag after a divider, green dot when live. Not yellow, so
+   the only yellow up here is "still there". */
+.source { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 0; padding-left: 24px; border-left: 1px solid rgba(237, 237, 237, 0.14); font-size: 14px; line-height: 24px; white-space: nowrap; }
+.source::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #8e8e94; }
 .source.live::before { background: var(--fixed); }
-.source.sample { color: var(--paint); }
 
 /* Small copy of the map pin, in the legend, list rows and status tag. */
 .dot { display: inline-block; flex-shrink: 0; vertical-align: middle; }
 
-.layout { flex: 1; display: grid; grid-template-columns: 1fr 440px; min-height: 0; }
 #map { background: var(--bg); }
-.panel { overflow-y: auto; padding: 24px; background: var(--bg-deep); border-left: 1px solid var(--line); }
+.panel { overflow-y: auto; padding: 16px 24px 24px; background: var(--bg); color: var(--text); } /* no left line, so it joins the top bar */
+/* Still scrolls (wheel, trackpad, touch), just without the visible scroll bar. */
+.panel { scrollbar-width: none; }
+.panel::-webkit-scrollbar { display: none; }
+
+/* Top bar and sidebar in a light charcoal, a step up from the near-black map, so the
+   map reads as the "window" and the panels as the frame. The panel swaps its color
+   tokens, so everything inside it (rows, tiles, chips, tags) follows. */
+.panel {
+  --bg: #2c2e33;          /* light charcoal */
+  --bg-deep: #2c2e33;
+  --card: #36393f;        /* tiles, chips, hover */
+  --raised: #42454c;      /* pressed chip */
+  --line: rgba(237, 237, 237, 0.1);
+}
 
 /* ---- Sidebar ----
    White text throughout. Hierarchy comes from size and weight, not from gray.
@@ -67,9 +88,9 @@ body { display: flex; flex-direction: column; }
 .spot-line { font-size: 14px; }
 /* Status tags: tinted fill, bold, so yellow and green read clearly on the dark panel. */
 .spot-tag { padding: 2px 8px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
-.spot-tag.still_there, .status.still_there { background: rgba(242, 194, 48, 0.14); color: var(--paint); }
-.spot-tag.fixed_confirmed, .status.fixed_confirmed { background: rgba(76, 195, 138, 0.14); color: var(--fixed); }
-.spot-tag.unreported, .status.unreported { background: rgba(237, 237, 237, 0.1); color: var(--text); }
+.spot-tag.still_there, .status.still_there { background: rgba(242, 194, 48, 0.18); color: var(--paint); }
+.spot-tag.fixed_confirmed, .status.fixed_confirmed { background: rgba(76, 195, 138, 0.18); color: var(--fixed); }
+.spot-tag.unreported, .status.unreported { background: rgba(237, 237, 237, 0.12); color: var(--text); }
 
 /* Legend at the top of the list: one chip per pin color with its count. Click to filter. */
 .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 24px; }
@@ -79,7 +100,7 @@ body { display: flex; flex-direction: column; }
   transition: border-color 120ms var(--ease), background-color 120ms var(--ease);
 }
 .chip b { margin-left: auto; font: 500 14px var(--mono); font-variant-numeric: tabular-nums; }
-.chip:hover { border-color: rgba(237, 237, 237, 0.24); }
+.chip:hover { border-color: rgba(237, 237, 237, 0.3); }
 .chip[aria-pressed="true"] { background: var(--raised); border-color: var(--text); }
 .chip:focus-visible { outline: 2px solid var(--paint); outline-offset: 2px; }
 .block h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text); }
@@ -99,7 +120,7 @@ body { display: flex; flex-direction: column; }
 /* Three tiles in a row, or a 2 x 2 grid when there are four. */
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 32px; }
 .stats.n4 { grid-template-columns: 1fr 1fr; }
-.stats .still { border-color: rgba(242, 194, 48, 0.5); }
+.stats .still { border-color: rgba(242, 194, 48, 0.55); background: rgba(242, 194, 48, 0.08); }
 .stats .still dd { color: var(--paint); font-weight: 600; }
 .stats div { padding: 12px 16px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
 .stats dt { font-size: 14px; }
@@ -154,9 +175,10 @@ a.row-id:hover { text-decoration-color: var(--text); }
 .leaflet-interactive { transition: opacity 120ms var(--ease); }
 .leaflet-interactive:focus { outline: none; }
 
-@media (max-width: 1100px) { .tagline { display: none; } }
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  body { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  .bar, #map, .panel { grid-column: 1; }
+  .panel { grid-row: 3; }
   .panel { max-height: 45vh; border-left: 0; border-top: 1px solid var(--line); }
   .totals { gap: 16px; }
   .totals div:nth-child(2) { display: none; }
