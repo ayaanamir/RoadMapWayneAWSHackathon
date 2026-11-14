@@ -9,8 +9,8 @@ const POLL_MS = 5000;
 //   not checked yet  small plain gray dot, so the many city-only spots stay quiet
 const PIN = {
   still_there: { size: 28, svg: '<circle cx="14" cy="14" r="12" fill="#f2c230" stroke="#0f0f10" stroke-width="2"/><path d="M14 8v7" stroke="#141415" stroke-width="2.6" stroke-linecap="round"/><circle cx="14" cy="19.5" r="1.6" fill="#141415"/>' },
-  // Camera: the Lucide camera outline, scaled into the ring.
-  unreported: { size: 26, svg: '<circle cx="13" cy="13" r="11" fill="#141415" stroke="#ededed" stroke-width="2.4"/><g transform="translate(6.4 6.4) scale(.55)" fill="none" stroke="#ededed" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></g>' },
+  // Camera: the Lucide camera outline on a dark disc, no ring.
+  unreported: { size: 26, svg: '<circle cx="13" cy="13" r="12" fill="#141415"/><g transform="translate(5.2 5.2) scale(.65)" fill="none" stroke="#ededed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></g>' },
   fixed_confirmed: { size: 24, svg: '<circle cx="12" cy="12" r="11" fill="#4cc38a"/><path d="m8 12.3 2.7 2.7L16 9.6" fill="none" stroke="#0f0f10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' },
   reported_only: { size: 14, svg: '<circle cx="7" cy="7" r="5.5" fill="#8e8e94" stroke="#0f0f10" stroke-width="1.5"/>' },
 };
