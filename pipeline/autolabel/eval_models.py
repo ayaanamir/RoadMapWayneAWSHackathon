@@ -277,7 +277,7 @@ def main():
         if "road2x" in d and "640" in d:
             delta = d["road2x"]["best_f1"] - d["640"]["best_f1"]
             tiling += (f" For {os.path.basename(parse_model(m)[0])}, road-band tiling "
-                       f"{'helped' if delta > 0 else 'did not help'} ({delta:+.3f} F1 vs plain 640).")
+                       f"{'helped' if delta > 0.001 else 'made no difference' if delta > -0.001 else 'hurt'} ({delta:+.3f} F1 vs plain 640).")
     lines += ["", "## Verdict", "",
               f"Best on this set is {top['name']} with box F1 {top['best_f1']:.3f} at conf {top['thr']} "
               f"(box precision {top['box_p']:.2f}, recall {top['box_r']:.2f}; frame-level precision "
