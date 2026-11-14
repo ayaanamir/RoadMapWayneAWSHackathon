@@ -10,8 +10,8 @@
 ## M3 · Live detection (by Sun 3 AM)
 - [ ] `index.html`: rear camera + ONNX Runtime Web (WebGPU → WASM fallback) + boxes drawn on screen
 - [ ] GPS via `navigator.geolocation`; throttle to 1 detection/sec
-- [ ] Upload frame via `POST /uploads/presign`, then `POST /detections` (`source: "live"`)
-- [ ] Hosted over HTTPS on AWS (Amplify or S3 + CloudFront); URL in chat
+- [ ] Upload frame via `POST /api/upload`, then `POST /api/detections` (`source: "live"`)
+- [ ] Served by Vercel at `/live` (HTTPS); URL in chat
 - [ ] Fallback mode: laptop webcam works too
 
 ## M4 · Demo-ready (by Sun 8 AM)

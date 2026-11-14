@@ -44,13 +44,14 @@ assigned.** If you weren't told which area you're in, ask before writing anythin
 
 | Area | Owner | What lives there |
 |---|---|---|
-| `services/api/` | Backbone | City data ingest, pothole history, REST API (Lambda), DynamoDB access |
+| `api/` | Backbone | Vercel Functions (TypeScript): the REST API in `shared/CONTRACTS.md` |
+| `services/api/` | Backbone | `schema.sql`, city ingest + pothole matching scripts (run locally against Neon) |
 | `apps/map/` | Backbone | Map + timeline demo screen (static site) |
-| `pipeline/` | Footage | Drive footage → frames → GPS match → YOLO → Bedrock verify → POST detections |
+| `pipeline/` | Footage | Drive footage → frames → GPS match → YOLO → OpenRouter verify → POST detections |
 | `apps/live/` | Live | Phone browser page: camera + YOLO (ONNX Runtime Web) + GPS → POST detections |
 | `pitch/` | Live | Pitch script, slides, backup demo video notes |
 | `shared/` | **Everyone (locked)** | Data contracts, schemas, fixtures — see rule 3 |
-| root files, `docs/`, `scripts/`, `.github/` | Ayaan | Repo setup — don't edit unless asked |
+| root files (`vercel.json`, `package.json`), `docs/`, `scripts/`, `.github/` | Ayaan | Repo setup — don't edit unless asked |
 | each area's `ROADMAP.md` | that area's owner | Tick boxes as you finish; keep it current |
 
 You may **read** anything. You may only **write** in your own area.
@@ -58,7 +59,7 @@ You may **read** anything. You may only **write** in your own area.
 ## 2. Talk to other areas only through the contracts
 
 - Never import code from another area's folder. Areas talk over HTTP (the API) or
-  through S3/DynamoDB, exactly as described in `shared/CONTRACTS.md`.
+  through the Neon database, exactly as described in `shared/CONTRACTS.md`.
 - If you need something from another area (a new field, a new endpoint), **don't build
   it yourself.** Write it in `docs/REQUESTS.md` (append only, one line, your area + what
   you need) and tell your human. Use the fixtures in `shared/fixtures/` until it exists.
@@ -87,7 +88,7 @@ You may **read** anything. You may only **write** in your own area.
 
 - Never commit secrets, AWS keys, or `.env`. Use `.env.example` for names only.
 - Never commit video, images from the drive, `.gpx` logs, or model weights. Those go
-  in S3 (paths in `shared/CONTRACTS.md`). `.gitignore` already blocks the common ones.
+  on the laptop that processes them (frames go to Vercel Blob via `POST /api/upload`). `.gitignore` already blocks the common ones.
 
 ## 6. Keep it demo-able
 

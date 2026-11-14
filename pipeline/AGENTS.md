@@ -1,29 +1,27 @@
 # Area: `pipeline/` — owner: Footage
 
-Also read the root `AGENTS.md`. You write only here.
+Also read the root `AGENTS.md` and `shared/CONTRACTS.md` (v2).
 
 ## Job
-Turn Saturday's drive into `Detection`s:
-1. Inputs: video (`.mov`/`.mp4`) + GPS log (`.gpx`) from S3 `raw/drive/<date>/`.
-2. Video start time: `exiftool -CreateDate <video>`. Short still clips: use their single
-   embedded location (`com.apple.quicktime.location.ISO6709`).
-3. Sample frames (ffmpeg, ~2–3 fps). Frame time = start time + offset → nearest GPX
-   point (interpolate) → lat/lon.
-4. Run YOLO (pothole model) on frames. Keep hits above a threshold.
-5. **Verify with Bedrock** (`verify.py`): crop → `pothole | shadow | patch` + one-sentence
-   reason. Optional: compare with the city photo, "same spot?".
-6. Upload frame to S3 `frames/<detection_id>.jpg`, then `POST /detections` to the API.
-   Until the API exists, write detections to `pipeline/out/detections.json` (gitignored).
+Saturday's drive → `Detection`s, run on a laptop:
+1. Inputs on disk (never in git): `data/raw/drive/2026-11-14/*.mov|*.mp4` + `*.gpx`.
+2. Start time: `exiftool -CreateDate <video>`. Still clips: their single
+   `ISO6709` location (`exiftool -ee -G1 "-gps*" <clip>`).
+3. ffmpeg frames at 2–3 fps; frame time = start + offset; interpolate lat/lon from the GPX.
+4. YOLO11n pothole model on frames; keep hits above a threshold.
+5. Verify each hit with OpenRouter (`verify.py`, prompts in `pipeline/prompts/`):
+   crop → `{ "verdict": "pothole|shadow|patch", "reason": "…" }`.
+6. `POST /api/upload` (frame JPEG ≤ 1280 px) → `POST /api/detections` (`source: "drive"`).
+   Until the API is up, write `pipeline/out/detections.json` (gitignored).
+
+## Model
+Fine-tune YOLO11n on a public pothole dataset (Colab GPU, ~20–40 min) or use a pretrained
+pothole checkpoint. Weights stay local / shared via Drive — never committed. Give the
+`.pt` to Live for the ONNX export.
 
 ## Stack
-Python 3.12, `ultralytics`, `opencv-python`, `gpxpy`, `boto3`; system `ffmpeg` + `exiftool`.
-Deps in `pipeline/requirements.txt`. Runs on a laptop or one EC2 instance.
+Python 3.12: `ultralytics`, `opencv-python`, `gpxpy`, `requests`; system `ffmpeg`, `exiftool`.
 
-## Rules for this area
-- Never write to DynamoDB directly — always through the API.
-- Never commit video, frames, `.gpx`, or model weights.
-- You own the Bedrock prompts. Keep them in `pipeline/prompts/`.
-
-## Check before you finish
-Run the pipeline on one short clip and confirm every output validates against
-`shared/schema/detection.schema.json`.
+## Done check
+One clip end to end; every detection validates against `shared/schema/detection.schema.json`
+and shows up on the map.

@@ -1,19 +1,19 @@
 # Area: `apps/map/` — owner: Backbone
 
-Also read the root `AGENTS.md`. You write only here and in `services/api/`.
+Also read the root `AGENTS.md` and `shared/CONTRACTS.md` (v2).
 
 ## Job
-The demo screen judges look at. One page:
-- Leaflet map of Detroit, one pin per `Pothole`, colored by `state`
-  (`still_there` red, `fixed_confirmed` green, `reported_only` gray, `unknown` gray).
-- Click a pin → side panel with the **timeline** (city reports + detections in date
-  order) and **side-by-side photos**: city photo (if any) vs our latest frame.
-- Big, readable, works on a laptop projected to judges.
+The demo screen, served by Vercel at `/`:
+- Leaflet map (CDN), one pin per pothole, colored by `state`
+  (`still_there` red, `fixed_confirmed` green, else gray) + legend.
+- Click a pin → side panel: timeline (city reports + detections by date) and side-by-side
+  photos: city `photo_url` vs our latest detection `image_url`, with `verdict_reason`.
+- Poll `/api/potholes` every 5 s. If it fails, load `/shared/fixtures/potholes.sample.json`.
+- Big fonts; it's shown on a projector.
 
 ## Stack
-Static `index.html` + one JS file + Leaflet from a CDN. No build step, no framework.
-Data from `API_BASE_URL/potholes`; if the API is down or unset, fall back to
-`../../shared/fixtures/potholes.sample.json` so the demo never shows a blank screen.
+Plain `index.html` + `app.js`. No build step, no framework. Same-origin API, so just
+`fetch('/api/potholes')`.
 
-## Check before you finish
-Open `index.html` locally (`python -m http.server` from the repo root) and click every pin.
+## Done check
+`vercel dev` (or the deployment) → click every pin, no console errors.

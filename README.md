@@ -11,19 +11,27 @@ Fill in your GitHub handle. One owner per area — see `AGENTS.md` for the rules
 
 | Role | Person | GitHub | Areas you write in |
 |---|---|---|---|
-| Backbone | Ayaan | @ayaanamir | `services/api/`, `apps/map/` |
+| Backbone | Ayaan | @ayaanamir | `api/`, `services/api/`, `apps/map/` |
 | Footage | Teammate 1 (stronger in Python) | | `pipeline/` |
 | Live + pitch | Teammate 2 (stronger in web/JS) | | `apps/live/`, `pitch/` |
+
+## Stack
+
+Vercel (pages + Functions, HTTPS) · Neon Postgres · Vercel Blob (images) · YOLO11n (detector)
+· OpenRouter (vision verify). No AWS. Details: `shared/CONTRACTS.md`.
+
+- Map: `https://<deployment>/` · Phone page: `https://<deployment>/live` · API: `https://<deployment>/api/*`
 
 ## Layout
 
 ```
+api/           Vercel Functions: the REST API                     (Backbone)
 apps/
   live/        phone page: camera + YOLO in browser + GPS        (Live)
   map/         map + timeline demo screen                         (Backbone)
 services/
-  api/         city ingest, history matching, REST API (Lambda)   (Backbone)
-pipeline/      drive footage → detections, Bedrock verify         (Footage)
+  api/         schema.sql, city ingest + matching scripts           (Backbone)
+pipeline/      drive footage → detections, vision verify          (Footage)
 pitch/         script, slides, backup video                       (Live)
 shared/        CONTRACTS.md, schemas, fixtures  — LOCKED          (everyone)
 docs/          WORKFLOW.md, REQUESTS.md
