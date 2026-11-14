@@ -92,9 +92,10 @@ is not live yet, it says so and the camera keeps running.
 The stock model has no `pothole` class, so it sends nothing. To try the flow anyway,
 without touching the team database: `/live?dry&sendlabel=person`.
 
-The API only puts a new pin on the map after a verified sighting or a 2nd sighting
-within 50 m (contract v3). Live sightings are unverified, so the first one near a
-place with no city report will not show; the second one will.
+After it answers, the API checks each live photo with the vision model (Ayaan's PR #88).
+"Pothole" makes a pin on its own; "shadow" or "patch" never does. While that runs the
+phone says "Sent, checking", and the pin shows up a few seconds later. If the check is
+off, a new spot still needs a 2nd sighting within 50 m (contract v3).
 
 ## Speed results (#38)
 
