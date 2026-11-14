@@ -182,6 +182,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 #stat-message[hidden] { display: none; }
 
+/* Colors only for what needs attention. Muted so they sit with the graphite.
+   good = sent, warn = waiting or weak GPS, bad = failed or blocked, quiet = no action. */
+#stats [data-tone="good"]  { color: #6fcf8e; }
+#stats [data-tone="warn"]  { color: #f0a35e; }
+#stats [data-tone="bad"]   { color: #f07067; }
+#stats [data-tone="quiet"] { color: var(--muted); }
+
 /* Two square icon buttons: flip camera, switch engine. */
 .actions { display: flex; gap: 8px; margin-top: 12px; }
 .icon {

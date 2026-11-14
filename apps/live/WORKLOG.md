@@ -205,3 +205,5 @@ Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on
   "Would send, 87%", "On the map", "Sent, needs 2nd sighting",
   "Not sent: no connection / server offline / server error 500 / photo failed".
 - GPS row: "Blocked", "No signal", "Not available" instead of full sentences.
+- Color only where it matters: green = sent, amber = waiting for GPS or GPS too rough,
+  red = not sent or location blocked, gray = practice. Everything else stays white.

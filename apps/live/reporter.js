@@ -22,6 +22,8 @@ export class Reporter {
     this.lastSentAt = 0;       // when the last send started (ms)
     this.sentCount = 0;        // how many detections went through
     this.lastMessage = DRY_RUN ? "Practice mode" : "";
+    // Color of the message: "good" green, "warn" amber, "bad" red, "quiet" gray, "" normal.
+    this.lastTone = DRY_RUN ? "quiet" : "";
 
     // Reused canvas for making the JPEG.
     this.canvas = document.createElement("canvas");
@@ -60,7 +62,7 @@ export class Reporter {
 
     const gps = this.usableGps();
     if (!gps) {
-      this.lastMessage = "Waiting for GPS";
+      this.say("Waiting for GPS", "warn");
       this.changed();
       return;
     }
@@ -112,16 +114,16 @@ export class Reporter {
 
       if (DRY_RUN) {
         console.info("[live] dry run, would send:", detection);
-        this.lastMessage = `Would send, ${Math.round(box.score * 100)}%`;
+        this.say(`Would send, ${Math.round(box.score * 100)}%`, "");
       } else {
         const result = await postDetection(detection);
         this.sentCount += 1;
         const pin = result.pothole_ids?.[0];
-        this.lastMessage = pin ? "On the map" : "Sent, needs 2nd sighting";
+        this.say(pin ? "On the map" : "Sent, needs 2nd sighting", "good");
       }
     } catch (err) {
       console.error("[live] send failed:", err);
-      this.lastMessage = `Not sent: ${shortReason(err)}`;
+      this.say(`Not sent: ${shortReason(err)}`, "bad");
     } finally {
       this.sending = false;
       this.changed();
@@ -146,9 +148,25 @@ export class Reporter {
   // What the page shows: GPS state, count, and the last message.
   state() {
     const p = this.position;
-    let gps = this.gpsProblem || "waiting";
-    if (p && !this.gpsProblem) gps = `±${Math.round(p.coords.accuracy)} m`;
-    return { gps, sent: this.sentCount, message: this.lastMessage };
+    let gps = "waiting";
+    let gpsTone = "quiet";
+    if (this.gpsProblem) {
+      gps = this.gpsProblem;
+      gpsTone = this.gpsProblem === "Blocked" ? "bad" : "warn";
+    } else if (p) {
+      gps = `±${Math.round(p.coords.accuracy)} m`;
+      gpsTone = p.coords.accuracy > GPS_MAX_ERROR_M ? "warn" : ""; // too rough to send
+    }
+    return {
+      gps, gpsTone,
+      sent: this.sentCount,
+      message: this.lastMessage, messageTone: this.lastTone,
+    };
+  }
+
+  say(message, tone) {
+    this.lastMessage = message;
+    this.lastTone = tone;
   }
 
   changed() {

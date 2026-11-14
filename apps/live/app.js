@@ -249,10 +249,12 @@ function modelInfo() {
 }
 
 // Update the GPS / sent lines in the stats box.
-function showReporterState({ gps, sent, message }) {
+function showReporterState({ gps, gpsTone, sent, message, messageTone }) {
   stats.gps.textContent = gps;
+  stats.gps.dataset.tone = gpsTone;
   stats.sent.textContent = String(sent);
   stats.message.textContent = message;
+  stats.message.dataset.tone = messageTone;
   stats.message.hidden = !message;
 }
 
