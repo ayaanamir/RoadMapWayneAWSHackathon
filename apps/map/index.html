@@ -24,17 +24,9 @@
   </header>
   <main class="layout">
     <div id="map" aria-label="Map of pothole reports"></div>
-    <aside class="panel" id="panel" aria-live="polite">
-      <div class="empty">
-        <p class="empty-title">Pick a pin</p>
-        <p class="muted">Each pin is a pothole spot in Corktown, Midtown and Southwest Detroit, from the city's own reports and our cameras.</p>
-        <ul class="key">
-          <li><span class="dot still_there"></span><span><b>Still there.</b> The city closed the report, and our camera saw the pothole after that.</span></li>
-          <li><span class="dot unreported"></span><span><b>Not reported.</b> Our camera found it. The city has no report.</span></li>
-          <li><span class="dot fixed_confirmed"></span><span><b>Fixed.</b> Our camera saw the patch.</span></li>
-          <li><span class="dot reported_only"></span><span><b>Not checked yet.</b> City reports only. We have not driven past.</span></li>
-        </ul>
-      </div>
+    <!-- Sidebar. app.js fills it: a list of spots, or one spot when a pin is picked. -->
+    <aside class="panel" id="panel">
+      <p class="panel-sub">Loading spots</p>
     </aside>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
