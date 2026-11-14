@@ -7,6 +7,10 @@
     {
       "source": "/live",
       "destination": "/apps/live/index.html"
+    },
+    {
+      "source": "/report",
+      "destination": "/apps/map/report.html"
     }
   ],
   "functions": {
