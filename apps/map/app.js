@@ -1,14 +1,30 @@
 // Map + timeline demo screen (#15-#18, #21). Same-origin API, fixture fallback.
 const NEWLAB = [42.3337, -83.0727];
 const POLL_MS = 5000;
-const STYLE = {
-  still_there:     { color: '#f2c230', fillColor: '#f2c230', fillOpacity: 1, weight: 0, radius: 9 },
-  unreported:      { color: '#ededed', fillColor: '#141415', fillOpacity: 1, weight: 3, radius: 8 },
-  fixed_confirmed: { color: '#4cc38a', fillColor: '#4cc38a', fillOpacity: 1, weight: 0, radius: 7 },
-  // Gray pins get a dark edge so they stand out from the dark streets.
-  reported_only:   { color: '#0f0f10', fillColor: '#8e8e94', fillOpacity: 1, weight: 1.5, radius: 6 },
-  unknown:         { color: '#0f0f10', fillColor: '#8e8e94', fillOpacity: 1, weight: 1.5, radius: 6 },
+// Map pins. Each state has its own shape and symbol, so a pin reads without the legend
+// (and without relying on color alone):
+//   still there      yellow badge with "!", the biggest: the thing we want you to see
+//   not reported     dark badge, white ring, camera symbol: our camera found it
+//   fixed            green badge with a check mark
+//   not checked yet  small plain gray dot, so the many city-only spots stay quiet
+const PIN = {
+  still_there: { size: 28, svg: '<circle cx="14" cy="14" r="12" fill="#f2c230" stroke="#0f0f10" stroke-width="2"/><path d="M14 8v7" stroke="#141415" stroke-width="2.6" stroke-linecap="round"/><circle cx="14" cy="19.5" r="1.6" fill="#141415"/>' },
+  unreported: { size: 26, svg: '<circle cx="13" cy="13" r="11" fill="#141415" stroke="#ededed" stroke-width="2.4"/><path d="M8.5 11.2a1 1 0 0 1 1-1h1.3l.9-1.4h2.6l.9 1.4h1.3a1 1 0 0 1 1 1v4.6a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z" fill="none" stroke="#ededed" stroke-width="1.4" stroke-linejoin="round"/><circle cx="13" cy="13.4" r="1.7" fill="none" stroke="#ededed" stroke-width="1.4"/>' },
+  fixed_confirmed: { size: 24, svg: '<circle cx="12" cy="12" r="10" fill="#4cc38a" stroke="#0f0f10" stroke-width="2"/><path d="m8 12.3 2.7 2.7L16 9.6" fill="none" stroke="#0f0f10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' },
+  reported_only: { size: 14, svg: '<circle cx="7" cy="7" r="5.5" fill="#8e8e94" stroke="#0f0f10" stroke-width="1.5"/>' },
 };
+PIN.unknown = PIN.reported_only;
+
+function pinIcon(state, selected) {
+  const pin = PIN[state] || PIN.unknown;
+  return L.divIcon({
+    className: `pin pin-${state}${selected ? ' selected' : ''}`,
+    html: `<svg viewBox="0 0 ${pin.size} ${pin.size}" width="${pin.size}" height="${pin.size}" aria-hidden="true">${pin.svg}</svg>`,
+    iconSize: [pin.size, pin.size],
+    iconAnchor: [pin.size / 2, pin.size / 2],
+  });
+}
+
 // Same wording as the evidence report (report.js), so a state reads the same everywhere.
 const LABEL = {
   still_there: 'Still there after closing',
@@ -76,17 +92,20 @@ function draw() {
   // Important pins drawn last so they sit on top.
   for (const p of [...potholes].sort((a, b) => order(a) - order(b))) {
     seen.add(p.pothole_id);
-    const style = STYLE[p.state] || STYLE.unknown;
+    const look = `${p.state}|${p.pothole_id === selectedId}`;
     let m = markers.get(p.pothole_id);
     if (!m) {
-      m = L.circleMarker([p.lat, p.lon], style).addTo(layer);
+      m = L.marker([p.lat, p.lon], { icon: pinIcon(p.state, p.pothole_id === selectedId), keyboard: false }).addTo(layer);
       m.on('click', () => select(p.pothole_id));
-      m.bindTooltip(() => esc(byId(p.pothole_id)?.address || ''), { direction: 'top', offset: [0, -8] });
+      m.bindTooltip(() => esc(byId(p.pothole_id)?.address || ''), { direction: 'top', offset: [0, -12] });
       markers.set(p.pothole_id, m);
     } else {
-      m.setLatLng([p.lat, p.lon]).setStyle(style).setRadius(style.radius);
+      m.setLatLng([p.lat, p.lon]);
+      if (m.look !== look) m.setIcon(pinIcon(p.state, p.pothole_id === selectedId));
     }
-    if (order(p) > 0) m.bringToFront();
+    m.look = look;
+    // Important pins on top of the gray ones; the picked pin on top of everything.
+    m.setZIndexOffset(p.pothole_id === selectedId ? 1000 : order(p) * 100);
   }
   for (const [id, m] of markers) if (!seen.has(id)) { layer.removeLayer(m); markers.delete(id); }
 
@@ -137,8 +156,6 @@ function setPanel(html) {
   panel.scrollTop = scroll;
 }
 
-// A ring around the picked pin, so you can see where you are on the map.
-const ring = L.circleMarker(NEWLAB, { radius: 15, color: '#ededed', weight: 2, fill: false, interactive: false });
 
 function select(id, pan = true) {
   const p = byId(id);
@@ -146,7 +163,7 @@ function select(id, pan = true) {
   const changed = selectedId !== id;
   selectedId = id;
   history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
-  ring.setLatLng([p.lat, p.lon]).addTo(map);
+  draw(); // redraw pins so the picked one gets its ring
   if (pan) map.setView([p.lat, p.lon], Math.max(map.getZoom(), 16));
   if (changed) { lastPanelHtml = ''; panel.scrollTop = 0; }
   renderSpot(p);
@@ -155,7 +172,7 @@ function select(id, pan = true) {
 function showList() {
   selectedId = null;
   history.replaceState(null, '', location.pathname);
-  map.removeLayer(ring);
+  draw(); // drop the ring from the pin that was picked
   lastPanelHtml = '';
   panel.scrollTop = 0;
   renderList();
