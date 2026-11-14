@@ -4,6 +4,17 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · #38 model on R2 (Ado + Claude)
+
+Branch: `live/model-on-r2`.
+
+- Uploaded the stock model to R2 as `models/yolo11n.onnx` with the new
+  `tools/upload_model.py`.
+- `config.js` now loads the model from R2 by default, so the deployed `/live` page works.
+- Added a CORS rule to the `waynehackathon` bucket (approved by Ado): any site may GET or
+  HEAD files. Before this, browsers blocked the model download. It does not allow
+  uploads or deletes. There was no CORS rule before, so nothing was replaced.
+
 ## 2026-11-14 · #38 camera page with stock model (Ado + Claude)
 
 Branch: `live/camera-page`. Status: built and tested on a laptop, waiting for phone tests.

@@ -19,15 +19,17 @@ on right now: `WORKLOG.md`.
 ## Run it on your laptop
 
 ```bash
-# 1. Get the stock model (placeholder until the pothole model is ready, see #39)
-pip install ultralytics
-yolo export model=yolo11n.pt format=onnx imgsz=640
-mkdir -p apps/live/model && mv yolo11n.onnx apps/live/model/
-
-# 2. Serve the repo root (the page uses /apps/live/... paths)
+# 1. Serve the repo root (the page uses /apps/live/... paths)
 python3 -m http.server 8000
 
-# 3. Open http://localhost:8000/apps/live/index.html and tap "Start camera"
+# 2. Open http://localhost:8000/apps/live/index.html and tap "Start camera"
+#    The model downloads from R2, so no local model file is needed.
+```
+
+To make your own ONNX file (only needed for a new model):
+```bash
+pip install ultralytics
+yolo export model=yolo11n.pt format=onnx imgsz=640
 ```
 
 The camera only works on `https://` pages or `localhost`. To test on a phone, use the
@@ -46,11 +48,28 @@ stock model (80 classes) and the pothole model (1 class) with no code change.
 
 ## Model setup
 
-Placeholder now: stock `yolo11n.pt` exported with the command above.
-Pothole model (#39): when Muq shares `best.pt` (#58), run
-`yolo export model=best.pt format=onnx imgsz=640`, upload it to R2 as
-`models/pothole.onnx`, and set `MODEL_URL` in `config.js` to
-`<R2_PUBLIC_URL>/models/pothole.onnx`.
+The page loads its model from the team's R2 bucket, so the deployed site works without
+any model file in git.
+
+| Model | In the bucket | Status |
+|---|---|---|
+| Stock YOLO11n (COCO, 80 classes) | `models/yolo11n.onnx` | Uploaded, used now |
+| Pothole model (1 class) | `models/pothole.onnx` | Waiting on `best.pt` from Muq (#58) |
+
+To upload (needs the R2 keys in the repo's `.env`):
+```bash
+pip install boto3
+python3 apps/live/tools/upload_model.py apps/live/model/yolo11n.onnx
+```
+
+Pothole model (#39): when Muq shares `best.pt`, run
+`yolo export model=best.pt format=onnx imgsz=640`, then
+`python3 apps/live/tools/upload_model.py best.onnx --name pothole.onnx`, then change
+`MODEL_URL` in `config.js` to `${R2_PUBLIC_URL}/models/pothole.onnx`.
+You can try it first without a code change: `/live?model=<R2 URL>/models/pothole.onnx`.
+
+The bucket has a rule that lets any web page read (GET) its files. Without it, browsers
+block the page from loading the model. Uploads still need the secret keys.
 
 ## Speed results (#38)
 
@@ -73,4 +92,4 @@ without WebGPU turns out to be the demo phone.
 
 ## Hosted URL (HTTPS)
 
-_Not deployed yet (#44)._ Will be `https://<deployment>/live`.
+https://wayneawshackathon.vercel.app/live (redeploys on every merge to `main`).
