@@ -1,102 +1,80 @@
-# Contracts — version 1
+# Contracts — version 2
 
-> Changelog: v1 — initial contract.
+> Changelog: v2 — stack moved off AWS to Vercel Functions + Neon Postgres + Vercel Blob +
+> OpenRouter vision. `Detection.image_key` → `image_url` (Blob returns full URLs).
+> API paths now live under `/api/*`. v1 — initial contract.
 >
 > LOCKED. Change only when your human says "change the contract". Add fields; never
 > rename or remove. Bump the version above and add a changelog line.
 
-Everything that crosses between areas is defined here. If it's not here, it's private
-to one area.
+## Stack
+
+| Piece | Service | Owner |
+|---|---|---|
+| Pages (map at `/`, phone page at `/live`) | Vercel static hosting (HTTPS) | Backbone / Live |
+| API | Vercel Functions in root `api/` (TypeScript, `@neondatabase/serverless`, `@vercel/blob`) | Backbone |
+| Database | Neon Postgres, project `still-there-builderwars` (schema: `services/api/schema.sql`) | Backbone |
+| Images | Vercel Blob (public), uploaded only through `POST /api/upload` | Backbone |
+| Vision verify | OpenRouter (OpenAI-compatible chat completions with image input) | Footage |
+| Detector | YOLO11n pothole model (Python in pipeline, ONNX in browser) | Footage / Live |
 
 ## Conventions
+- Coordinates: WGS84 decimal degrees `lat` / `lon`. Times: ISO 8601 UTC. IDs: strings.
 
-- Coordinates: WGS84 decimal degrees, `lat` / `lon` (floats).
-- Times: ISO 8601 UTC strings, e.g. `"2026-11-14T19:05:12Z"`.
-- IDs: strings. City report IDs are the SeeClickFix `issue_id` as a string.
-- Units: meters, seconds.
+## Data shapes (JSON Schemas in `shared/schema/`, examples in `shared/fixtures/`)
 
-## Data shapes
+### CityReport
+`issue_id`, `address`, `lat`, `lon` (city geocode, **rough: 10–50 m off**), `status`
+(`Open|Closed|Archived`), `created_at`, `closed_at|null`, `issue_url`, `photo_url|null`.
 
-JSON Schemas live in `shared/schema/`. Examples live in `shared/fixtures/`.
-
-### CityReport — one Improve Detroit pothole report
+### Detection
 | field | type | notes |
 |---|---|---|
-| `issue_id` | string | SeeClickFix id |
-| `address` | string | as given by the city (often an intersection) |
-| `lat`, `lon` | float | city geocode — **rough, can be 10–50 m off** |
-| `status` | string | `Open` \| `Closed` \| `Archived` |
-| `created_at` | string | ISO time |
-| `closed_at` | string \| null | ISO time |
-| `issue_url` | string | `https://seeclickfix.com/issues/<id>` |
-| `photo_url` | string \| null | city/reporter photo if we found one |
+| `detection_id` | string | uuid4, made by the producer (live page / pipeline) |
+| `source` | `live` \| `drive` | |
+| `lat`, `lon` | float | phone GPS / GPX match |
+| `captured_at` | ISO string | when the frame was taken |
+| `confidence` | float 0–1 | YOLO score |
+| `bbox` | [x, y, w, h] | pixels in the uploaded image |
+| `image_url` | string | URL returned by `POST /api/upload` |
+| `verdict` | `pothole` \| `shadow` \| `patch` \| `unverified` | vision model result |
+| `verdict_reason` | string \| null | one sentence |
 
-### Detection — one sighting of a possible pothole by us
-| field | type | notes |
-|---|---|---|
-| `detection_id` | string | uuid4, created by whoever makes the detection |
-| `source` | string | `live` (phone page) \| `drive` (pipeline) |
-| `lat`, `lon` | float | from phone GPS / GPX match |
-| `captured_at` | string | ISO time the frame was taken |
-| `confidence` | float | YOLO score 0–1 |
-| `bbox` | [x, y, w, h] | pixels in the stored image |
-| `image_key` | string | S3 key of the frame (see S3 layout) |
-| `verdict` | string | `pothole` \| `shadow` \| `patch` \| `unverified` (Bedrock result) |
-| `verdict_reason` | string \| null | one sentence from Bedrock |
+### Pothole (what the map shows)
+`pothole_id`, `lat`, `lon`, `address`, `city_reports[]` (by `created_at`), `detections[]`
+(by `captured_at`), `state` (`still_there|fixed_confirmed|reported_only|unknown`),
+`last_seen_at|null`.
 
-### Pothole — what the map shows (built by Backbone from the two above)
-| field | type | notes |
-|---|---|---|
-| `pothole_id` | string | stable id |
-| `lat`, `lon` | float | best location |
-| `address` | string | |
-| `city_reports` | CityReport[] | sorted by `created_at` |
-| `detections` | Detection[] | sorted by `captured_at` |
-| `state` | string | `still_there` \| `fixed_confirmed` \| `reported_only` \| `unknown` |
-| `last_seen_at` | string \| null | latest `pothole` verdict time |
+**State rule:** `still_there` = latest city report Closed/Archived and a `pothole`
+detection after its `closed_at`. `fixed_confirmed` = closed, and our latest detection after
+`closed_at` is `patch` (or a pass with no hit). `reported_only` = reports, no detections.
+`unknown` = anything else.
+**Matching rule:** a detection joins the nearest pothole within **50 m**; else it creates a
+new pothole (`state: unknown`).
 
-**State rule (Backbone owns the logic, this is the meaning):**
-- `still_there` — newest city report is Closed/Archived **and** a `pothole` detection exists after `closed_at`.
-- `fixed_confirmed` — closed, and our latest pass after `closed_at` found no pothole / verdict `patch`.
-- `reported_only` — city reports but no detections yet.
-- `unknown` — anything else.
+## API (Vercel Functions; base URL = the Vercel deployment, `API_BASE_URL`)
 
-**Matching rule:** a detection belongs to a pothole if it's within **50 m** of it.
-(City geocodes are rough — don't tighten this without telling everyone.)
-
-## API (Backbone serves it; base URL in `.env` as `API_BASE_URL`)
-
-| method | path | body / returns | used by |
+| method | path | body → response | used by |
 |---|---|---|---|
-| `GET` | `/potholes` | `{ "potholes": Pothole[] }` (detections may be omitted for speed) | map |
-| `GET` | `/potholes/{pothole_id}` | `Pothole` with everything | map |
-| `POST` | `/detections` | body: `Detection` (or `{ "detections": Detection[] }`) → `{ "ok": true, "pothole_id": "…"\|null }` | live, pipeline |
-| `POST` | `/uploads/presign` | body: `{ "key": "<s3 key>", "content_type": "image/jpeg" }` → `{ "url": "…" }` | live |
-| `GET` | `/health` | `{ "ok": true }` | everyone |
+| GET | `/api/health` | → `{ "ok": true }` | all |
+| GET | `/api/potholes` | → `{ "potholes": Pothole[] }` | map |
+| GET | `/api/potholes?id=<pothole_id>` | → `Pothole` | map |
+| POST | `/api/upload` | raw image body, header `Content-Type: image/jpeg`, query `?name=<detection_id>.jpg` → `{ "image_url": "https://…blob.vercel-storage.com/…" }` | live, pipeline |
+| POST | `/api/detections` | `Detection` or `{ "detections": Detection[] }` → `{ "ok": true, "pothole_ids": ["…"] }` | live, pipeline |
 
-- JSON in, JSON out. CORS open (`*`) — it's a hackathon.
-- `POST /detections` must be idempotent on `detection_id` (retries are safe).
-- Until the API is live, read `shared/fixtures/*.json` instead.
+- JSON in/out, CORS `*`. Images must be < 4 MB (Function body limit is 4.5 MB): send
+  JPEG at quality ~80, max 1280 px wide.
+- `POST /api/detections` upserts on `detection_id` (retries are safe), assigns
+  `pothole_id`, recomputes the pothole's `state` / `last_seen_at`.
+- Until the API is live, read `shared/fixtures/*.json`.
 
-## S3 layout (bucket in `.env` as `S3_BUCKET`)
+## Database (Neon) — Backbone owns; everyone else goes through the API
+Tables: `potholes`, `city_reports` (+`pothole_id`), `detections` (+`pothole_id`). Exact DDL:
+`services/api/schema.sql`. Connection string: `DATABASE_URL` (Vercel env + local `.env`,
+never committed).
 
-```
-raw/drive/<YYYY-MM-DD>/<clip>.mov       original drive videos     (Footage writes)
-raw/drive/<YYYY-MM-DD>/<clip>.gpx       GPS logs                  (Footage writes)
-frames/<detection_id>.jpg               frame for each detection  (Footage, Live write)
-city/photos/<issue_id>.jpg              saved city photos         (Backbone writes)
-```
-
-## DynamoDB (Backbone owns; others never write directly — use the API)
-
-| table (env var) | partition key | holds |
-|---|---|---|
-| `DDB_CITY_REPORTS` | `issue_id` | CityReport |
-| `DDB_DETECTIONS` | `detection_id` | Detection |
-| `DDB_POTHOLES` | `pothole_id` | Pothole without nested arrays (ids only) |
-
-## Bedrock (Footage owns the prompts; others may call via the pipeline's verify step only)
-
-- Model id in `.env` as `BEDROCK_MODEL_ID`, region `AWS_REGION`.
-- Input: frame crop (+ optional city photo for "same spot?" check).
-- Output written into `Detection.verdict` / `verdict_reason`.
+## Vision verify (Footage owns prompts in `pipeline/prompts/`)
+OpenRouter `POST https://openrouter.ai/api/v1/chat/completions`, model from
+`OPENROUTER_MODEL`, key `OPENROUTER_API_KEY`. Input: frame crop (+ optional city photo).
+Output must parse to `{ "verdict": "...", "reason": "..." }` → `Detection.verdict`,
+`verdict_reason`.
