@@ -23,7 +23,9 @@ node_modules/
 *.pt
 *.onnx
 *.engine
-apps/live/model/
+apps/live/model/*
+# exception: the one exported browser model Vercel serves for /live (~5-10 MB)
+!apps/live/model/pothole.onnx
 # outputs
 pipeline/out/
 out/

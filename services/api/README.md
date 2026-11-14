@@ -5,12 +5,12 @@ Rules: `AGENTS.md` here + at repo root. Progress: `ROADMAP.md`.
 
 ## Run / deploy
 _Owner fills this in as it's built:_
+- City ingest: `python3 services/api/ingest_city.py` (stdlib only, reads `DATABASE_URL` from env or `.env`; `--dry-run` to preview). Safe to rerun; last run Sat 2:31 PM: 147 reports → 130 potholes.
 - Local: `npm install && vercel dev` (needs `DATABASE_URL` in `.env`; without it `/api/potholes` serves the fixture)
 - Deploy: merge to `main` (Vercel auto-deploys)
 - Live URL: https://wayneawshackathon.vercel.app (`/api/health`, `/api/potholes`, `/api/upload`, `/api/detections`)
-- City ingest: `pip install -r services/api/requirements.txt && python3 services/api/ingest_city.py`
-  (`--dry-run` to just fetch, `--days N` for a longer window). Re-running is safe.
-- State rule + 50 m grouping live in SQL (`recompute_pothole()`, `group_city_reports()` in `schema.sql`).
+- State rule lives in SQL: `recompute_pothole()` in `schema.sql`, used by `POST /api/detections`
+  and at the end of `ingest_city.py`. (`group_city_reports()` is an SQL-only regroup, not used by the script.)
 
 ## Test locally (no Vercel deploy)
 - Unit: `node --test services/api/tests/*.test.ts`
