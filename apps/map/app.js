@@ -222,8 +222,9 @@ function renderList() {
     </div>
     <header class="panel-head">
       <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
-      ${rows.length ? '' : '<p class="panel-sub">None yet</p>'}
+
     </header>
+    ${rows.length ? '' : '<p class="empty-state">None yet</p>'}
     <ul class="spots">
       ${rows.map(({ p, f }) => `
         <li><button type="button" class="spot-row" data-id="${esc(p.pothole_id)}">
