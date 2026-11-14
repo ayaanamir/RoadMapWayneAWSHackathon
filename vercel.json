@@ -1,6 +1,17 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/apps/map/index.html" },
-    { "source": "/live", "destination": "/apps/live/index.html" }
-  ]
+    {
+      "source": "/",
+      "destination": "/apps/map/index.html"
+    },
+    {
+      "source": "/live",
+      "destination": "/apps/live/index.html"
+    }
+  ],
+  "functions": {
+    "api/potholes.ts": {
+      "includeFiles": "shared/fixtures/**"
+    }
+  }
 }
