@@ -97,7 +97,11 @@ You may **read** anything. You may only **write** in your own area.
   build tools, or infrastructure without your human's OK.
 - Don't add dependencies to another area's `requirements.txt` / `package.json`.
 
-## 6b. Collision check before EVERY commit
+## 6b. Collision check on every message and before EVERY commit
+
+- Every new message: Claude Code runs `python3 scripts/precommit.py --prompt` automatically
+  (`.claude/settings.json` hook) — fetches `origin`, reports new `main` commits and
+  collisions. Other agents: run it yourself at the start of each turn.
 
 - Once per checkout: `git config stillthere.area <your area(s)>` and
   `python3 scripts/precommit.py --install-hook`.

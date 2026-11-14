@@ -96,17 +96,28 @@ def main():
     if "--install-hook" in argv:
         return install_hook()
     hook = "--hook" in argv
+    prompt = "--prompt" in argv  # Claude Code UserPromptSubmit hook: report only, never block
     contract = "--contract" in argv or os.environ.get("STILLTHERE_CONTRACT") == "1"
 
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))  # works from any cwd
     os.chdir(git("rev-parse", "--show-toplevel", check=True))
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
+    main_before = git("rev-parse", "origin/main")
 
     # 1. Fetch so we compare against what teammates pushed, not a stale copy.
     if "--no-fetch" not in argv:
-        r = subprocess.run(["git", "fetch", "--quiet", "--prune", "origin"],
-                           capture_output=True, text=True, timeout=60)
-        if r.returncode != 0:
-            warns.append(f"git fetch failed (offline?): {r.stderr.strip()[:120]}")
+        try:
+            r = subprocess.run(["git", "fetch", "--quiet", "--prune", "origin"],
+                               capture_output=True, text=True, timeout=15 if prompt else 60)
+            if r.returncode != 0:
+                warns.append(f"git fetch failed (offline?): {r.stderr.strip()[:120]}")
+        except subprocess.TimeoutExpired:
+            warns.append("git fetch timed out — comparing against the last fetched origin.")
+    main_after = git("rev-parse", "origin/main")
+    if prompt and main_before and main_after != main_before:
+        new = git("log", "--format=  %h %s", f"{main_before}..{main_after}")
+        warns.append(f"NEW on origin/main since last check:\n{new}\n  → re-read shared/CONTRACTS.md "
+                     "+ chat if any of these touch the contract.")
 
     if branch == "main":
         warns.append("You are on main. Rule 4: work on a branch named <area>/<task>.")
@@ -191,6 +202,15 @@ def main():
                          "Check the chat before you continue.")
 
     # Report.
+    if prompt:
+        print(f"[collision check] branch {branch} · area {','.join(sorted(areas)) or '?'}")
+        for w in warns:
+            print(f"  WARN  {w}")
+        for f in fails:
+            print(f"  FIX BEFORE COMMIT  {f}")
+        if not warns and not fails:
+            print("  OK  up to date with origin, no collisions.")
+        return
     print(f"precommit: branch {branch} · area {','.join(sorted(areas)) or '?'} · "
           f"{len(mine)} file(s) changed vs origin/main")
     for w in warns:

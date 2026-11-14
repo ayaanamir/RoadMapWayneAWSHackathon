@@ -26,6 +26,18 @@ git config stillthere.area pipeline          # your area(s), comma list: api,map
 python3 scripts/precommit.py --install-hook  # auto-runs the check on every git commit
 ```
 
+## On EVERY new message (automatic in Claude Code)
+
+`.claude/settings.json` has a `UserPromptSubmit` hook: each time the human sends a message,
+`python3 scripts/precommit.py --prompt` fetches `origin` and puts a short report in your
+context. It never blocks. **Read it before doing anything:**
+- `NEW on origin/main` → `git pull --rebase origin main`; if a commit touches `shared/`,
+  re-read `shared/CONTRACTS.md` and the chat before writing code.
+- `WARN … also edits` → someone else is in your files; check chat first.
+- `FIX BEFORE COMMIT` → the pre-commit hook will block on this; fix it now.
+Other agents (Cursor, Codex): run `python3 scripts/precommit.py --prompt` yourself at the
+start of every turn.
+
 ## Before starting a task
 
 1. `git fetch origin && git pull --rebase origin main`
