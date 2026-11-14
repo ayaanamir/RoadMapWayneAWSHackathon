@@ -12,10 +12,41 @@ export const ORT_CDN = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSI
 // This is safe to have in code: it is read only. The upload keys stay in .env.
 export const R2_PUBLIC_URL = "https://pub-9da122d7960d49de90da1a69cb4fe7f9.r2.dev";
 
-// Where the model file lives. Upload with apps/live/tools/upload_model.py.
-// Now: Muq's pothole model (YOLO11n, one class "pothole", #39).
-// The old stock model is still in the bucket for testing: ?model=<R2 URL>/models/yolo11n.onnx
-export const MODEL_URL = params.get("model") || `${R2_PUBLIC_URL}/models/pothole.onnx`;
+// The pothole models we can switch between. Both are YOLO11n with one class "pothole",
+// exported at 640x640. Upload with apps/live/tools/upload_model.py, e.g.
+//   python3 apps/live/tools/upload_model.py <file>.onnx --name pothole-dashcam.onnx
+//   phone:   Muq's first model, trained on close-up photos (#39).
+//   dashcam: trained on dashcam footage, better from a moving car.
+export const MODELS = {
+  phone: { name: "Phone model", short: "Phone", file: "pothole.onnx" },
+  dashcam: { name: "Dashcam model", short: "Dashcam", file: "pothole-dashcam.onnx" },
+};
+
+// Which model to use. Order of choice:
+//   1. ?m=phone or ?m=dashcam in the URL
+//   2. what was picked last time on this phone
+//   3. phone
+const MODEL_MEMORY_KEY = "live.model";
+const pickedModel = params.get("m") || readMemory(MODEL_MEMORY_KEY);
+export const MODEL_KEY = MODELS[pickedModel] ? pickedModel : "phone";
+
+// ?model=<full URL> loads any other .onnx file instead (for testing). The old stock
+// model is still in the bucket: ?model=<R2 URL>/models/yolo11n.onnx
+export const MODEL_FROM_URL = params.get("model");
+export const MODEL_URL = MODEL_FROM_URL || modelUrl(MODEL_KEY);
+
+export function modelUrl(key) {
+  return `${R2_PUBLIC_URL}/models/${MODELS[key].file}`;
+}
+
+// Remember a model for this phone (same idea as rememberBackend below).
+export function rememberModel(key) {
+  try {
+    localStorage.setItem(MODEL_MEMORY_KEY, key);
+  } catch {
+    // Storage blocked: the page still works, it just will not remember.
+  }
+}
 
 // Which engine runs the model: "webgpu", "wasm", or "auto" (WebGPU if the browser
 // has it, else WASM). Order of choice:

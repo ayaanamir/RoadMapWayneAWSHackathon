@@ -12,7 +12,7 @@
 // pothole model.
 
 import {
-  ORT_CDN, MODEL_URL, BACKEND, INPUT_SIZE, CONFIDENCE_MIN, OVERLAP_MAX, labelsFor,
+  ORT_CDN, BACKEND, INPUT_SIZE, CONFIDENCE_MIN, OVERLAP_MAX, labelsFor,
 } from "./config.js";
 
 // ONNX Runtime Web. Loaded by loadRuntime() once we know which engine to use.
@@ -44,7 +44,8 @@ export class Detector {
 
   // Download the model and start it on one engine (WebGPU or WASM).
   // onStatus(text, progress) reports each step; progress runs from 0 to 1.
-  async load(onStatus = () => {}) {
+  // `url` is the model file to download.
+  async load(onStatus = () => {}, url) {
     const started = performance.now();
     const backend = chooseBackend();
 
@@ -52,7 +53,7 @@ export class Detector {
     ort = await loadRuntime(backend);
 
     // The download is most of the wait, so it fills most of the progress bar (10 to 85%).
-    const modelBytes = await download(MODEL_URL, (done) => {
+    const modelBytes = await download(url, (done) => {
       onStatus("Downloading the pothole model", 0.1 + done * 0.75);
     });
 
@@ -199,10 +200,21 @@ function loadRuntime(backend) {
   });
 }
 
+// The model file is not in the bucket (yet).
+export class ModelMissing extends Error {
+  constructor(url) {
+    super(`${url.split("/").pop()} is not uploaded yet`);
+    this.url = url;
+  }
+}
+
 // Download a file and report how much has arrived (0 to 1) as it comes in.
 // Falls back to a plain download if the size is unknown.
 async function download(url, onProgress) {
   const response = await fetch(url);
+  if (response.status === 404 || response.status === 403) {
+    throw new ModelMissing(url);
+  }
   if (!response.ok) {
     throw new Error(`Could not download the model (HTTP ${response.status}).`);
   }

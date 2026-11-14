@@ -12,9 +12,12 @@
 //   6. After each model run, reporter.js sends a pothole (if any) to the API with
 //      GPS, at most once per second (#42, #43).
 
-import { Detector, EngineFailed } from "./detector.js";
+import { Detector, EngineFailed, ModelMissing } from "./detector.js";
 import { Reporter } from "./reporter.js";
-import { BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend, MODEL_URL, DRY_RUN } from "./config.js";
+import {
+  BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend, DRY_RUN,
+  MODELS, MODEL_KEY, MODEL_FROM_URL, modelUrl, rememberModel,
+} from "./config.js";
 
 const view = document.getElementById("view");
 const ctx = view.getContext("2d");
@@ -45,12 +48,15 @@ video.muted = true;
 
 let facing = "environment"; // "environment" = back camera, "user" = front camera
 let modelLoopRunning = false;
+let modelKey = MODEL_KEY;   // "phone" or "dashcam", can change on the start screen
 const recentMs = [];          // last few model run times, for the average
 const recentRunTimes = [];    // when the last few runs finished, for checks/second
 
 startButton.addEventListener("click", start);
 document.getElementById("switch-backend").addEventListener("click", switchBackend);
 document.getElementById("switch-camera").addEventListener("click", flipCamera);
+document.getElementById("switch-model").addEventListener("click", switchModel);
+buildModelPicker();
 
 async function start() {
   startButton.disabled = true;
@@ -80,9 +86,11 @@ async function start() {
 
   // Step 2: the model.
   try {
-    await detector.load(say);
+    await detector.load(say, MODEL_FROM_URL || modelUrl(modelKey));
     const { name, sending } = modelInfo();
     stats.model.textContent = name;
+    const other = MODELS[modelKey === "phone" ? "dashcam" : "phone"];
+    document.getElementById("switch-model").title = `Switch to ${other.name}`;
     stats.mode.textContent = sending ? "Sending" : "Practice";
     stats.mode.className = sending ? "mode on" : "mode";
     stats.panel.hidden = false;
@@ -101,6 +109,14 @@ async function start() {
       say("WebGPU does not work on this phone. Switching to WASM...");
       rememberBackend("wasm");
       setTimeout(() => window.location.reload(), 1000);
+      return;
+    }
+    // The picked model is not in the bucket yet (e.g. the dashcam model before it is
+    // uploaded). Go back to the phone model so the camera still works.
+    if (err instanceof ModelMissing && !MODEL_FROM_URL && modelKey !== "phone") {
+      say(`${MODELS[modelKey].name} is not uploaded yet. Using the phone model...`);
+      rememberModel("phone");
+      setTimeout(() => reloadWith({ m: "phone" }), 1500);
       return;
     }
     say(`Model did not load: ${err.message || err}`);
@@ -223,10 +239,50 @@ function recordSpeed(ms) {
 
 // Reload the page using the other engine, to compare speed on the same phone.
 function switchBackend() {
-  const next = detector.backend === "webgpu" ? "wasm" : "webgpu";
+  reloadWith({ ep: detector.backend === "webgpu" ? "wasm" : "webgpu" });
+}
+
+// Reload the page with the other pothole model. A reload is the clean way to drop
+// the old model from memory. The phone asks for a tap again to restart the camera.
+function switchModel() {
+  const next = modelKey === "phone" ? "dashcam" : "phone";
+  rememberModel(next);
+  reloadWith({ m: next, model: null });
+}
+
+// Reload with some URL settings changed (null removes one).
+function reloadWith(changes) {
   const url = new URL(window.location.href);
-  url.searchParams.set("ep", next);
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === null) url.searchParams.delete(key);
+    else url.searchParams.set(key, value);
+  }
   window.location.href = url.toString();
+}
+
+// Two buttons on the start screen, one per model. The picked one is highlighted.
+function buildModelPicker() {
+  const picker = document.getElementById("model-picker");
+  if (MODEL_FROM_URL) {
+    picker.hidden = true; // a model file was given in the link, so there is no choice
+    return;
+  }
+  for (const [key, model] of Object.entries(MODELS)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = model.short;
+    button.setAttribute("aria-pressed", String(key === modelKey));
+    button.addEventListener("click", () => {
+      modelKey = key;
+      rememberModel(key);
+      // Keep the link in step, so a reload keeps this choice.
+      const url = new URL(window.location.href);
+      url.searchParams.set("m", key);
+      history.replaceState(null, "", url);
+      for (const b of picker.children) b.setAttribute("aria-pressed", String(b === button));
+    });
+    picker.append(button);
+  }
 }
 
 async function flipCamera() {
@@ -241,10 +297,11 @@ async function flipCamera() {
 // Which model is running, for the stats box, and whether sightings go to the map.
 // "Practice" (?dry in the link) means nothing is sent.
 function modelInfo() {
-  const file = MODEL_URL.split("/").pop();
-  const name = file === "pothole.onnx" ? "Pothole model"
-    : file === "yolo11n.onnx" ? "Stock model"
-    : file.replace(/\.onnx$/, "");
+  let name = MODELS[modelKey].name;
+  if (MODEL_FROM_URL) {
+    const file = MODEL_FROM_URL.split("/").pop();
+    name = file === "yolo11n.onnx" ? "Stock model" : file.replace(/\.onnx$/, "");
+  }
   return { name, sending: !DRY_RUN };
 }
 
