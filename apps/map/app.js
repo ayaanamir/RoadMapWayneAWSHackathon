@@ -222,7 +222,7 @@ function renderList() {
     </div>
     <header class="panel-head">
       <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
-      <p class="panel-sub">${rows.length ? 'Most important first' : 'None yet'}</p>
+      ${rows.length ? '' : '<p class="panel-sub">None yet</p>'}
     </header>
     <ul class="spots">
       ${rows.map(({ p, f }) => `
