@@ -223,3 +223,12 @@ Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on
 - `?model=<URL>` still works for any other file and hides the picker.
 - Tested on the laptop: picker, dashcam fallback (file not uploaded yet), status box name
   and switch button.
+
+## Upload 503 on the live site (#43)
+
+- `POST /api/upload` on the live site gave 503 "storage error": R2 refused the keys in
+  the Vercel settings. The same keys from `.env` write to the bucket fine from a laptop.
+- Fix: re-paste the `R2_*` values in Vercel (Production ticked, no spaces), then make a
+  new deploy. Settings only take effect on the next deploy, so a paste alone is not enough.
+- Quick check after a deploy: send a tiny JPEG to `/api/upload?name=test.jpg` and expect
+  200 with an `image_url`.
