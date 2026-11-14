@@ -254,7 +254,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--images", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--model", default="google/gemini-4-carbon")
+    ap.add_argument("--model", default="google/gemini-2.5-flash-lite")
     ap.add_argument("--base-url", default="https://openrouter.ai/api/v1")
     ap.add_argument("--concurrency", type=int, default=8)
     ap.add_argument("--min-conf", type=float, default=0.5)

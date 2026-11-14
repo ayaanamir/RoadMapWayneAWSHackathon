@@ -10,7 +10,8 @@ export interface Teacher {
   road_visible: boolean;
 }
 
-export const TEACHER_MODEL_DEFAULT = 'google/gemini-4-carbon';
+// ~20x cheaper than gemini-4-carbon and natively trained on box_2d detection. Override with TEACHER_MODEL.
+export const TEACHER_MODEL_DEFAULT = 'google/gemini-2.5-flash-lite';
 
 export const TEACHER_PROMPT = `You label dash-cam frames from Detroit streets to train a pothole detector.
 Find every POTHOLE: an open hole or broken-out depression in the road surface with edges and depth,
@@ -78,7 +79,8 @@ export async function teach(
     body: JSON.stringify({
       model: opts.model,
       temperature: 0,
-      max_tokens: 1500,
+      max_tokens: 800,
+      reasoning: { enabled: false }, // no billed "thinking" tokens: this is a perception task
       messages: [{
         role: 'user',
         content: [
