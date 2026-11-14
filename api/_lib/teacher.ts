@@ -24,7 +24,9 @@ Answer with ONLY this JSON:
  "lookalikes":[{"box_2d":[ymin,xmin,ymax,xmax],"kind":"manhole|patch|shadow|crack|puddle|siding|other"}],
  "road_visible": true}
 box_2d values are integers normalised to 0-1000 (ymin, xmin, ymax, xmax). confidence is 0-1.
-Use an empty "potholes" list if there is none. Set road_visible false if no road surface is visible.`;
+Use an empty "potholes" list if there is none. Set road_visible false if no road surface is visible.
+List at most 5 lookalikes, only ON the road surface, the most pothole-like first. Never list "other" things
+that are clearly not road damage (cars, buildings, signs, people).`;
 
 const KINDS = new Set(['manhole', 'patch', 'shadow', 'crack', 'puddle', 'siding', 'other']);
 
@@ -44,13 +46,16 @@ export function parseTeacher(text: string): Teacher | null {
   if (!text) return null;
   const s = text.indexOf('{');
   const e = text.lastIndexOf('}');
-  if (s < 0 || e <= s) return null;
-  let obj: any;
-  try {
-    obj = JSON.parse(text.slice(s, e + 1));
-  } catch {
-    return null;
+  let obj: any = null;
+  if (s >= 0 && e > s) {
+    try {
+      obj = JSON.parse(text.slice(s, e + 1));
+    } catch {
+      obj = null;
+    }
   }
+  if (!obj) obj = salvage(text);
+  if (!obj) return null;
   if (!obj || typeof obj !== 'object') return null;
   const potholes = (Array.isArray(obj.potholes) ? obj.potholes : []).flatMap((p: any) => {
     const b = fromBox2d(p?.box_2d);
@@ -65,6 +70,28 @@ export function parseTeacher(text: string): Teacher | null {
     return [{ ...b, kind: KINDS.has(kind) ? kind : 'other' }];
   });
   return { potholes, lookalikes, road_visible: obj.road_visible !== false };
+}
+
+/**
+ * A reply cut off by max_tokens: "potholes" comes first in the format, so keep it if that list is
+ * complete and drop the rest (lookalikes are context only, never training labels).
+ */
+function salvage(text: string): any {
+  const k = text.search(/"potholes"\s*:\s*\[/);
+  if (k < 0) return null;
+  const open = text.indexOf('[', k);
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {        // find the matching ']' (boxes nest [...])
+    if (text[i] === '[') depth++;
+    else if (text[i] === ']' && --depth === 0) {
+      try {
+        return { potholes: JSON.parse(text.slice(open, i + 1)), lookalikes: [], road_visible: true };
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;                                         // potholes list itself was cut off
 }
 
 /** One teacher call. Throws with a short message on failure (stored as teacher_error). */

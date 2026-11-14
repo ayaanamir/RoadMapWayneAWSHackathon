@@ -26,3 +26,12 @@ test('empty / missing lists and road_visible false', () => {
   assert.equal(parseTeacher('no json here'), null);
   assert.equal(parseTeacher('{broken'), null);
 });
+
+test('reply cut off by max_tokens: complete potholes list is kept, lookalikes dropped', () => {
+  const cut = '{"potholes": [{"box_2d": [600, 200, 700, 300], "confidence": 0.7, "note": "hole"}], "lookalikes": [{"box_2d": [700, 0, 795, 75], "kind": "other"}, {"box_2d": [698, 35';
+  const t = parseTeacher(cut);
+  assert.equal(t?.potholes.length, 1);
+  assert.deepEqual(t?.lookalikes, []);
+  assert.deepEqual(parseTeacher('{"potholes": [], "lookalikes": [{"box_2d": [1,')?.potholes, []);
+  assert.equal(parseTeacher('{"potholes": [{"box_2d": [6'), null); // potholes list itself cut → unusable
+});
