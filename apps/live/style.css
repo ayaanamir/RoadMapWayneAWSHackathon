@@ -138,8 +138,6 @@ button:disabled { opacity: 0.5; cursor: default; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
 }
 .stats-head .mark { width: 12px; height: 4px; background: var(--paint); flex-shrink: 0; }
 .stats-head b { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -164,31 +162,37 @@ button:disabled { opacity: 0.5; cursor: default; }
 .stats-rows dt { color: var(--text-2); font-size: 14px; }
 .stats-rows dd { margin: 0; font: 500 14px/20px var(--mono); font-variant-numeric: tabular-nums; }
 
-/* Last send result, e.g. "Sent. On the map as ph_123." */
+/* Last send result, one short line, e.g. "Would send pothole 87%". */
 #stat-message {
   margin: 8px 0 0;
-  padding: 8px;
-  border-radius: 6px;
-  background: var(--raised);
   color: var(--text);
   font-size: 13px;
   line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 #stat-message[hidden] { display: none; }
 
-/* Bottom: speed numbers, small and quiet. */
-.stats-speed {
-  margin: 12px 0 0;
-  color: var(--muted);
-  font: 400 12px/16px var(--mono);
-  font-variant-numeric: tabular-nums;
-}
-
+/* Two square icon buttons: flip camera, switch engine. */
 .actions { display: flex; gap: 8px; margin-top: 12px; }
-.actions button { flex: 1; padding: 6px 8px; font-size: 13px; }
-/* "Switch engine" is for testing, so it is a quiet text button. */
-.actions .quiet { flex: 0 0 auto; background: transparent; border-color: transparent; color: var(--muted); }
-.actions .quiet:hover { color: var(--text-2); }
+.icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+.icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon:hover { background: #2b2b2e; }
 
 /* ---- Loading and error messages, on top of the camera picture ---- */
 
@@ -198,12 +202,31 @@ button:disabled { opacity: 0.5; cursor: default; }
   right: 16px;
   bottom: max(24px, env(safe-area-inset-bottom));
   margin: 0 auto;
-  max-width: 480px;
-  padding: 12px 16px;
+  max-width: 360px;
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--panel);
-  text-align: center;
-  font-size: 15px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 #banner[hidden] { display: none; }
+#banner p { margin: 0; font-size: 15px; line-height: 20px; }
+
+/* Thin road-paint bar that fills as the model loads. */
+.progress {
+  height: 4px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.progress[hidden] { display: none; }
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--paint);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 300ms var(--ease);
+}

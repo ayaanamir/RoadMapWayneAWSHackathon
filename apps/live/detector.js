@@ -43,30 +43,29 @@ export class Detector {
   }
 
   // Download the model and start it on one engine (WebGPU or WASM).
+  // onStatus(text, progress) reports each step; progress runs from 0 to 1.
   async load(onStatus = () => {}) {
     const started = performance.now();
     const backend = chooseBackend();
 
-    onStatus(`Loading engine (${backend})...`);
+    onStatus("Starting the detector", 0.05);
     ort = await loadRuntime(backend);
 
-    onStatus("Downloading model...");
-    const response = await fetch(MODEL_URL);
-    if (!response.ok) {
-      throw new Error(`Could not download the model from ${MODEL_URL} (HTTP ${response.status}).`);
-    }
-    const modelBytes = new Uint8Array(await response.arrayBuffer());
+    // The download is most of the wait, so it fills most of the progress bar (10 to 85%).
+    const modelBytes = await download(MODEL_URL, (done) => {
+      onStatus("Downloading the pothole model", 0.1 + done * 0.75);
+    });
 
     // Start the model and do one test run on a blank image. The first run is always
     // slow (setup work), so we pay that cost now instead of on the first camera frame.
     // An engine only counts as working once this test run finishes. On some phones
     // WebGPU starts fine and then hangs here, so there is a time limit.
     try {
-      onStatus(`Starting model (${backend})...`);
+      onStatus("Getting ready", 0.9);
       this.session = await withTimeLimit(
         startAndWarmUp(modelBytes, backend),
         START_LIMIT_MS[backend],
-        (seconds) => onStatus(`Starting model (${backend}), ${seconds}s...`),
+        (seconds) => onStatus(`Getting ready, ${seconds}s`, 0.9),
       );
     } catch (err) {
       throw new EngineFailed(backend, err);
@@ -190,6 +189,30 @@ function loadRuntime(backend) {
     script.onerror = () => reject(new Error(`Could not load ${file} from the CDN.`));
     document.head.appendChild(script);
   });
+}
+
+// Download a file and report how much has arrived (0 to 1) as it comes in.
+// Falls back to a plain download if the size is unknown.
+async function download(url, onProgress) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Could not download the model (HTTP ${response.status}).`);
+  }
+  const total = Number(response.headers.get("Content-Length")) || 0;
+  if (!total || !response.body) {
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  const reader = response.body.getReader();
+  const bytes = new Uint8Array(total);
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes.set(value, received);
+    received += value.length;
+    onProgress(Math.min(1, received / total));
+  }
+  return bytes.subarray(0, received);
 }
 
 // Create a model session on one engine and run it once on a blank image.

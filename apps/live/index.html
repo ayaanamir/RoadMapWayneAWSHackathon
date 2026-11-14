@@ -25,8 +25,12 @@
     <!-- The camera feed. Invisible: we copy its frames onto the canvas above. -->
     <video id="camera" playsinline muted></video>
 
-    <!-- Messages shown on top of the camera picture while the model loads. -->
-    <p id="banner" role="status" hidden></p>
+    <!-- Shown on top of the camera picture while the model loads: one line of text and
+         a yellow bar that fills as it goes. Also used for errors. -->
+    <div id="banner" role="status" hidden>
+      <p id="banner-text"></p>
+      <div class="progress" id="banner-progress"><span id="banner-bar"></span></div>
+    </div>
 
     <!-- Shown until the camera starts. Browsers need a tap before using the camera. -->
     <section id="start-screen">
@@ -37,7 +41,7 @@
     </section>
 
     <!-- Status box. Top: which model and whether it sends. Middle: what matters while
-         filming. Bottom: speed numbers in small type, for comparing phones. -->
+         filming. Bottom: last result and two icon buttons. -->
     <aside id="stats" hidden>
       <header class="stats-head">
         <span class="mark" aria-hidden="true"></span>
@@ -50,10 +54,14 @@
         <div><dt>Sent to map</dt><dd id="stat-sent">0</dd></div>
       </dl>
       <p id="stat-message" hidden></p>
-      <p class="stats-speed"><span id="stat-backend">-</span> · <span id="stat-ms">-</span> ms · <span id="stat-fps">-</span> per s</p>
       <div class="actions">
-        <button id="switch-camera" type="button">Flip camera</button>
-        <button id="switch-backend" type="button" class="quiet">Switch engine</button>
+        <!-- Icons from Lucide (lucide.dev, ISC license): "switch-camera" and "cpu". -->
+        <button id="switch-camera" type="button" class="icon" aria-label="Flip camera" title="Flip camera">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+        </button>
+        <button id="switch-backend" type="button" class="icon" aria-label="Switch engine" title="Switch engine">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+        </button>
       </div>
     </aside>
   </main>
