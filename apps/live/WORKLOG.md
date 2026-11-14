@@ -4,6 +4,22 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · Status box and start screen restyled (Ado + Claude)
+
+Branch: `live/stats-box-polish`.
+
+- Took the map's look (apps/map/style.css) so phone and map read as one product:
+  graphite colors, road-paint yellow as the only accent, IBM Plex Sans and Mono,
+  every size on a 4px grid.
+- Status box reordered by what matters: model name and "Sending" (yellow) or
+  "Practice" at the top; In view, GPS, Sent to map in the middle; last result; speed
+  numbers in one small grey line; "Flip camera" button with "Switch engine" as a quiet
+  text button.
+- Pothole boxes on the camera picture are now road-paint yellow with a mono label.
+- Start screen: product name with the yellow stripe (as on the map), off-white button.
+- Wording: "Practice: nothing goes to the map", "Would send: ...", "On the map as ...".
+- Checked locally with a fake camera and GPS in practice mode.
+
 ## 2026-11-14 · Model name in the stats box (Ado + Claude)
 
 Branch: `live/show-model-name`.
