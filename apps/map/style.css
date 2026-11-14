@@ -1,0 +1,81 @@
+/* Direction (apps/map/AGENTS.md): blunt, civic, exact. Asphalt at night, one accent:
+   road-paint yellow for "still there". Graphite neutrals, IBM Plex, 4px grid. */
+:root {
+  --bg-deep: #0f0f10;
+  --bg: #141415;
+  --card: #19191b;
+  --raised: #232325;
+  --line: rgba(237, 237, 237, 0.08);
+  --text: #ededed;
+  --text-2: #a1a1a6;
+  --muted: #85858b;
+  --paint: #f2c230;          /* still_there, the accent */
+  --unreported: #ededed;     /* white ring: ours, not the city's */
+  --fixed: #4cc38a;
+  --reported: #5c5c62;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 400 16px/1.5 var(--sans); }
+body { display: flex; flex-direction: column; }
+
+.bar { display: flex; align-items: center; gap: 24px; padding: 16px 24px; background: var(--bg-deep); border-bottom: 1px solid var(--line); }
+.brand { white-space: nowrap; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.brand::before { content: ""; display: inline-block; width: 24px; height: 4px; margin: 0 12px 4px 0; background: var(--paint); vertical-align: middle; }
+.summary { color: var(--text-2); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.summary b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+.legend { flex-shrink: 0; display: flex; gap: 20px; margin: 0 0 0 auto; padding: 0; list-style: none; color: var(--text-2); font-size: 14px; }
+.legend li { white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+.dot.still_there { background: var(--paint); }
+.dot.unreported { border: 2px solid var(--unreported); }
+.dot.fixed_confirmed { background: var(--fixed); }
+.dot.reported_only, .dot.unknown { background: var(--reported); }
+
+.layout { flex: 1; display: grid; grid-template-columns: 1fr 440px; min-height: 0; }
+#map { background: var(--bg); }
+.panel { overflow-y: auto; padding: 24px; background: var(--bg-deep); border-left: 1px solid var(--line); }
+
+.empty { margin-top: 32px; }
+.empty-title { margin: 0 0 8px; font-size: 20px; font-weight: 500; }
+.muted { color: var(--muted); }
+
+.place { margin: 0; font-size: 28px; font-weight: 500; line-height: 1.2; }
+.status { display: flex; align-items: center; gap: 8px; margin: 8px 0 24px; color: var(--text-2); }
+.status.still_there { color: var(--paint); }
+.meta { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+.photos figure { margin: 0; }
+.photos img, .photos .none { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: var(--card); border: 1px solid var(--line); }
+.photos .none { display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.photos figcaption { margin-top: 8px; font-size: 13px; color: var(--text-2); }
+
+.timeline { margin: 0; padding: 0; list-style: none; border-left: 2px solid var(--raised); }
+.timeline li { position: relative; padding: 0 0 20px 20px; }
+.timeline li::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--reported); border: 2px solid var(--bg-deep); }
+.timeline li.closed::before { background: var(--text-2); }
+.timeline li.seen::before { background: var(--paint); }
+.timeline li.patch::before { background: var(--fixed); }
+.timeline .what { font-weight: 500; }
+.timeline .why { color: var(--text-2); font-size: 14px; }
+.timeline a { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.timeline a:hover { color: var(--text); }
+
+.leaflet-container { font-family: var(--sans); background: var(--bg); }
+.leaflet-control-attribution { background: rgba(15, 15, 16, 0.8) !important; color: var(--muted) !important; }
+.leaflet-control-attribution a { color: var(--text-2) !important; }
+.leaflet-bar a { background: var(--card); color: var(--text); border-color: var(--line); }
+.leaflet-bar a:hover { background: var(--raised); }
+.leaflet-interactive { transition: opacity 120ms var(--ease); }
+.leaflet-interactive:focus { outline: none; }
+
+@media (max-width: 1280px) { .legend { display: none; } }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .panel { max-height: 45vh; border-left: 0; border-top: 1px solid var(--line); }
+  .legend { display: none; }
+}
