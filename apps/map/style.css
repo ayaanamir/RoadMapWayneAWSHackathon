@@ -21,12 +21,16 @@
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 400 16px/1.5 var(--sans); }
 body { display: flex; flex-direction: column; }
 
-.bar { display: flex; align-items: center; gap: 24px; min-height: 72px; padding: 12px 24px; background: #2c2e33; border-bottom: 1px solid rgba(237, 237, 237, 0.1); }
+/* Top bar: two columns that match .layout (map | 440px sidebar). */
+:root { --side: 440px; }
+.bar { display: grid; grid-template-columns: 1fr var(--side); min-height: 72px; background: #2c2e33; border-bottom: 1px solid rgba(237, 237, 237, 0.1); }
+.bar-left { display: flex; align-items: center; gap: 24px; min-width: 0; padding: 12px 24px; }
+.bar-right { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-left: 1px solid rgba(237, 237, 237, 0.1); }
 .brand { white-space: nowrap; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
 .brand::before { content: ""; display: inline-block; width: 24px; height: 4px; margin: 0 12px 4px 0; background: var(--paint); vertical-align: middle; }
 /* Top bar: what it is, then the totals on the right, then live or sample data. */
 .tagline { margin: 0; padding-left: 24px; border-left: 1px solid rgba(237, 237, 237, 0.14); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.totals { display: flex; gap: 32px; margin: 0 0 0 auto; flex-shrink: 0; }
+.totals { display: flex; gap: 32px; margin: 0; flex-shrink: 0; }
 .totals div { display: flex; flex-direction: column; }
 .totals dt { font-size: 13px; }
 .totals dd { margin: 0; font: 500 22px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
@@ -43,7 +47,7 @@ body { display: flex; flex-direction: column; }
 .dot.fixed_confirmed { background: var(--fixed); }
 .dot.reported_only, .dot.unknown { background: #8e8e94; }
 
-.layout { flex: 1; display: grid; grid-template-columns: 1fr 440px; min-height: 0; }
+.layout { flex: 1; display: grid; grid-template-columns: 1fr var(--side); min-height: 0; }
 #map { background: var(--bg); }
 .panel { overflow-y: auto; padding: 24px; background: var(--bg); border-left: 1px solid var(--line); color: var(--text); }
 /* Still scrolls (wheel, trackpad, touch), just without the visible scroll bar. */
@@ -177,4 +181,6 @@ a.row-id:hover { text-decoration-color: var(--text); }
   .panel { max-height: 45vh; border-left: 0; border-top: 1px solid var(--line); }
   .totals { gap: 16px; }
   .totals div:nth-child(2) { display: none; }
+  .bar { grid-template-columns: auto 1fr; }
+  .bar-right { justify-content: flex-end; gap: 16px; border-left: 0; }
 }
