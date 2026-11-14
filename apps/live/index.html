@@ -8,9 +8,8 @@
   <!-- All paths start with /apps/live/ because Vercel serves this page at /live,
        where a relative path like "app.js" would point to the wrong place. -->
   <link rel="stylesheet" href="/apps/live/style.css">
-  <!-- ONNX Runtime Web: runs the model in the browser. This build supports both
-       WebGPU and WASM. Keep the version in sync with ORT_VERSION in config.js. -->
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.min.js"></script>
+  <!-- ONNX Runtime Web (runs the model) is added by detector.js once it knows which
+       engine to use. Version: ORT_VERSION in config.js. -->
   <script type="module" src="/apps/live/app.js"></script>
 </head>
 <body>

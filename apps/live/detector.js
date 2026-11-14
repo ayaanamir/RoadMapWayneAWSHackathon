@@ -15,8 +15,18 @@ import {
   ORT_CDN, MODEL_URL, BACKEND, INPUT_SIZE, CONFIDENCE_MIN, OVERLAP_MAX, labelsFor,
 } from "./config.js";
 
-// `ort` is a global set by the <script> tag in index.html.
-const ort = window.ort;
+// ONNX Runtime Web. Loaded by loadRuntime() once we know which engine to use.
+let ort = null;
+
+// Thrown when the engine itself fails (not, for example, a bad network). The page uses
+// this to switch engines. Trying another engine in the same page does not work: a stuck
+// WebGPU run keeps holding the runtime, so a fresh page load is needed.
+export class EngineFailed extends Error {
+  constructor(backend, cause) {
+    super(`${backend} did not work on this device: ${cause?.message || cause}`);
+    this.backend = backend;
+  }
+}
 
 export class Detector {
   constructor() {
@@ -32,15 +42,14 @@ export class Detector {
     this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
   }
 
-  // Download the model and start it on the best engine this device supports.
+  // Download the model and start it on one engine (WebGPU or WASM).
   async load(onStatus = () => {}) {
-    // Tell ONNX Runtime where to download its helper files from.
-    ort.env.wasm.wasmPaths = ORT_CDN;
-
     const started = performance.now();
+    const backend = chooseBackend();
 
-    // Download the model file once. If the first engine fails we can try the next
-    // one without downloading the 11 MB file again.
+    onStatus(`Loading engine (${backend})...`);
+    ort = await loadRuntime(backend);
+
     onStatus("Downloading model...");
     const response = await fetch(MODEL_URL);
     if (!response.ok) {
@@ -48,39 +57,22 @@ export class Detector {
     }
     const modelBytes = new Uint8Array(await response.arrayBuffer());
 
-    // Try each engine. An engine only counts as working once it has finished one
-    // test run, because on some phones WebGPU loads fine but then hangs on its
-    // first run. If that happens we give up on it after a time limit and move on.
-    let lastError = null;
-    for (const backend of backendsToTry()) {
-      try {
-        onStatus(`Starting model (${backend})...`);
-        const session = await ort.InferenceSession.create(modelBytes, {
-          executionProviders: [backend],
-          graphOptimizationLevel: "all",
-        });
-
-        // The first run is always slow (setup work). Do it now, on a blank image,
-        // rather than on the first real camera frame.
-        const input = { [session.inputNames[0]]: blankInput() };
-        await withTimeLimit(
-          session.run(input),
-          WARMUP_LIMIT_MS[backend],
-          (seconds) => onStatus(`Warming up (${backend}), ${seconds}s...`),
-        );
-
-        this.session = session;
-        this.backend = backend;
-        break;
-      } catch (err) {
-        console.warn(`[live] ${backend} did not work, trying the next engine:`, err);
-        lastError = err;
-      }
-    }
-    if (!this.session) {
-      throw new Error(`The model would not run on this device. ${lastError?.message || ""}`);
+    // Start the model and do one test run on a blank image. The first run is always
+    // slow (setup work), so we pay that cost now instead of on the first camera frame.
+    // An engine only counts as working once this test run finishes. On some phones
+    // WebGPU starts fine and then hangs here, so there is a time limit.
+    try {
+      onStatus(`Starting model (${backend})...`);
+      this.session = await withTimeLimit(
+        startAndWarmUp(modelBytes, backend),
+        START_LIMIT_MS[backend],
+        (seconds) => onStatus(`Starting model (${backend}), ${seconds}s...`),
+      );
+    } catch (err) {
+      throw new EngineFailed(backend, err);
     }
 
+    this.backend = backend;
     this.loadMs = performance.now() - started;
     this.inputName = this.session.inputNames[0];
     this.outputName = this.session.outputNames[0];
@@ -174,17 +166,46 @@ export class Detector {
   }
 }
 
-// Which engines to try, in order.
-function backendsToTry() {
-  if (BACKEND === "webgpu" || BACKEND === "wasm") return [BACKEND];
-  // "auto": WebGPU is usually much faster, but not every phone browser has it.
-  return "gpu" in navigator ? ["webgpu", "wasm"] : ["wasm"];
+// Which engine to use. "auto" picks WebGPU (usually much faster) when the browser
+// has it, otherwise WASM.
+function chooseBackend() {
+  if (BACKEND === "webgpu" || BACKEND === "wasm") return BACKEND;
+  return "gpu" in navigator ? "webgpu" : "wasm";
 }
 
-// How long the first (warm-up) run may take before we give up on an engine.
-// WebGPU is fast when it works, so a long wait means it is stuck. WASM is slow on
+// Add the ONNX Runtime <script> for one engine and wait for it to load.
+// The WASM-only build is much smaller to download (about 11 MB instead of 22 MB),
+// which matters on a phone.
+function loadRuntime(backend) {
+  if (window.ort) return Promise.resolve(window.ort);
+  const file = backend === "webgpu" ? "ort.webgpu.min.js" : "ort.wasm.min.js";
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = ORT_CDN + file;
+    script.onload = () => {
+      // Tell ONNX Runtime where to download its helper files from.
+      window.ort.env.wasm.wasmPaths = ORT_CDN;
+      resolve(window.ort);
+    };
+    script.onerror = () => reject(new Error(`Could not load ${file} from the CDN.`));
+    document.head.appendChild(script);
+  });
+}
+
+// Create a model session on one engine and run it once on a blank image.
+async function startAndWarmUp(modelBytes, backend) {
+  const session = await ort.InferenceSession.create(modelBytes, {
+    executionProviders: [backend],
+    graphOptimizationLevel: "all",
+  });
+  await session.run({ [session.inputNames[0]]: blankInput() });
+  return session;
+}
+
+// How long starting the model (including the test run) may take before we give up.
+// WebGPU is fast when it works, so a long wait means it is stuck. WASM is slower on
 // older phones but reliable, so it gets more time.
-const WARMUP_LIMIT_MS = { webgpu: 15_000, wasm: 60_000 };
+const START_LIMIT_MS = { webgpu: 15_000, wasm: 90_000 };
 
 // Wait for `promise`, but fail if it takes longer than `limitMs`.
 // Calls onTick(seconds) once a second so the page can show it is still working.
