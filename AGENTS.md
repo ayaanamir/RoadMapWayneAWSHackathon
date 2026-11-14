@@ -97,6 +97,16 @@ You may **read** anything. You may only **write** in your own area.
   build tools, or infrastructure without your human's OK.
 - Don't add dependencies to another area's `requirements.txt` / `package.json`.
 
+## 6b. Collision check on every message and before EVERY commit
+
+- `python3 scripts/precommit.py` fetches `origin` and reports where your changes overlap
+  `main` or a teammate's branch (`CONFLICT` = same lines, `OVERLAP` = same file). It does not
+  restrict which files you edit; it only blocks secrets / media / weights.
+- Every new message: Claude Code runs it automatically (`.claude/settings.json` hook).
+  Other agents: run `python3 scripts/precommit.py --prompt` at the start of each turn.
+- Once per clone: `python3 scripts/precommit.py --install-hook` (runs it on every commit).
+- Full workflow: `.claude/skills/no-collisions/SKILL.md` (any agent can read it).
+
 ## 7. Before you finish a task
 
 - Run your area's check command (listed in your area's `AGENTS.md`).
