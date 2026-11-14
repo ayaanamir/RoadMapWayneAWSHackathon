@@ -42,6 +42,9 @@
 
       <button id="start" type="button">Start camera</button>
       <p id="status" role="status"></p>
+
+      <!-- GPS track from a drive that did not end cleanly (page closed, crash). -->
+      <button id="leftover" type="button" class="link" hidden></button>
     </section>
 
     <!-- Status box. Top: which model and whether it sends. Middle: what matters while
@@ -52,24 +55,42 @@
         <b id="stat-model">-</b>
         <span id="stat-mode"></span>
       </header>
+      <!-- Drive recording (recorder.js): big red dot and time, readable at a glance
+           from the driver's seat. Only while recording. -->
+      <div id="rec" role="status" hidden>
+        <span class="rec-dot" aria-hidden="true"></span>
+        <b id="rec-time">0:00</b>
+        <small>Keep this page open</small>
+      </div>
       <dl class="stats-rows">
-        <div><dt>In view</dt><dd id="stat-count">-</dd></div>
+        <div data-detect><dt>In view</dt><dd id="stat-count">-</dd></div>
         <div><dt>GPS</dt><dd id="stat-gps">-</dd></div>
-        <div><dt>Sent to map</dt><dd id="stat-sent">0</dd></div>
+        <div data-detect><dt>Sent to map</dt><dd id="stat-sent">0</dd></div>
+        <div data-rec hidden><dt>Track</dt><dd id="stat-fixes">0 points</dd></div>
+        <div data-rec hidden><dt>Video</dt><dd id="stat-clips">0 clips</dd></div>
       </dl>
       <p id="stat-message" hidden></p>
       <div class="actions">
-        <!-- Icons from Lucide (lucide.dev, ISC license): "switch-camera", "cpu", "layers". -->
+        <!-- Icons from Lucide (lucide.dev, ISC license): "video", "switch-camera", "cpu", "layers". -->
+        <button id="record" type="button" class="icon" aria-pressed="false" aria-label="Record drive" title="Record drive">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        </button>
         <button id="switch-camera" type="button" class="icon" aria-label="Flip camera" title="Flip camera">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
         </button>
-        <button id="switch-model" type="button" class="icon" aria-label="Switch model" title="Switch model">
+        <button id="switch-model" type="button" class="icon" data-detect aria-label="Switch model" title="Switch model">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>
         </button>
-        <button id="switch-backend" type="button" class="icon" aria-label="Switch engine" title="Switch engine">
+        <button id="switch-backend" type="button" class="icon" data-detect aria-label="Switch engine" title="Switch engine">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
         </button>
       </div>
+      <!-- Files from the drive. They also download on their own; Save is the backup
+           when the phone blocks that. -->
+      <details id="files" hidden>
+        <summary>Files <span id="files-count"></span></summary>
+        <ul id="files-list"></ul>
+      </details>
     </aside>
   </main>
 

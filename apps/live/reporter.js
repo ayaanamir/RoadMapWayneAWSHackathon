@@ -14,14 +14,19 @@ import {
 
 export class Reporter {
   // onChange(state) is called whenever something the page shows has changed.
-  constructor(onChange = () => {}) {
+  // onPosition(pos) gets every GPS reading (the drive recorder logs them).
+  constructor(onChange = () => {}, onPosition = () => {}) {
     this.onChange = onChange;
+    this.onPosition = onPosition;
     this.position = null;      // latest GPS reading
     this.gpsProblem = "";      // why we have no GPS, if we do not
     this.sending = false;      // a send is in progress
     this.lastSentAt = 0;       // when the last send started (ms)
     this.sentCount = 0;        // how many detections went through
     this.lastMessage = DRY_RUN ? "Practice mode" : "";
+    // While recording a drive, say "No signal" when readings stop coming in. Off
+    // otherwise: a laptop that is not moving gets few readings and is still fine.
+    this.flagStale = false;
     // Color of the message: "good" green, "warn" amber, "bad" red, "quiet" gray, "" normal.
     this.lastTone = DRY_RUN ? "quiet" : "";
 
@@ -42,13 +47,14 @@ export class Reporter {
       (pos) => {
         this.position = pos;
         this.gpsProblem = "";
+        this.onPosition(pos);
         this.changed();
       },
       (err) => {
         this.gpsProblem = err.code === err.PERMISSION_DENIED ? "Blocked" : "No signal";
         this.changed();
       },
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }, // fresh fixes only, for the drive track,
     );
   }
 
@@ -155,6 +161,9 @@ export class Reporter {
     if (this.gpsProblem) {
       gps = this.gpsProblem;
       gpsTone = this.gpsProblem === "Blocked" ? "bad" : "warn";
+    } else if (p && this.flagStale && Date.now() - p.timestamp > 10_000) {
+      gps = "No signal"; // last reading is old: tunnel, garage, lost fix
+      gpsTone = "warn";
     } else if (p) {
       gps = `±${Math.round(p.coords.accuracy)} m`;
       gpsTone = p.coords.accuracy > GPS_MAX_ERROR_M ? "warn" : ""; // too rough to send

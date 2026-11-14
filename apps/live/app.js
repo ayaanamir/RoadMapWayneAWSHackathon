@@ -11,11 +11,15 @@
 //      boxes. Between runs we wait one screen refresh, so the page never freezes.
 //   6. After each model run, reporter.js sends a pothole (if any) to the API with
 //      GPS, at most once per second (#42, #43).
+//   7. Drive recording (recorder.js): the record button, or ?rec=1, saves the raw
+//      camera as video files plus a GPS track for the footage pipeline. ?detect=0
+//      records only, without the model.
 
 import { Detector, EngineFailed, ModelMissing } from "./detector.js";
 import { Reporter } from "./reporter.js";
+import { DriveRecorder, download } from "./recorder.js";
 import {
-  BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend, DRY_RUN,
+  BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend, DRY_RUN, REC_AUTO, DETECT,
   MODELS, MODEL_KEY, MODEL_FROM_URL, modelUrl, rememberModel,
 } from "./config.js";
 
@@ -37,10 +41,18 @@ const stats = {
   gps: document.getElementById("stat-gps"),
   sent: document.getElementById("stat-sent"),
   message: document.getElementById("stat-message"),
+  fixes: document.getElementById("stat-fixes"),
+  clips: document.getElementById("stat-clips"),
 };
+const recButton = document.getElementById("record");
+const recBadge = document.getElementById("rec");
+const recTime = document.getElementById("rec-time");
+const filesBox = document.getElementById("files");
+const filesList = document.getElementById("files-list");
 
 const detector = new Detector();
-const reporter = new Reporter(showReporterState);
+const drive = new DriveRecorder(showDriveState);
+const reporter = new Reporter(showReporterState, (pos) => drive.addFix(pos));
 // The camera picture. The canvas "view" sits on top of it and only has the boxes.
 const video = document.getElementById("camera");
 video.playsInline = true; // needed on iPhone, or the video opens full screen
@@ -53,6 +65,15 @@ const recentMs = [];          // last few model run times, for the average
 const recentRunTimes = [];    // when the last few runs finished, for checks/second
 
 startButton.addEventListener("click", start);
+recButton.addEventListener("click", toggleRecording);
+// Once a second: the REC clock, and the GPS row (so a lost signal shows even when no
+// new reading comes in).
+setInterval(() => {
+  reporter.flagStale = drive.recording;
+  if (drive.recording) showDriveState(drive.state());
+  reporter.changed();
+}, 1000);
+setUpRecordingScreen();
 document.getElementById("switch-backend").addEventListener("click", switchBackend);
 document.getElementById("switch-camera").addEventListener("click", flipCamera);
 document.getElementById("switch-model").addEventListener("click", switchModel);
@@ -81,6 +102,15 @@ async function start() {
   reporter.startGps();
 
   startScreen.hidden = true;
+  if (REC_AUTO) drive.start(video.srcObject);
+
+  // Record only (?detect=0): no model, nothing sent. Just the status box.
+  if (!DETECT) {
+    stats.model.textContent = "Recording only";
+    stats.panel.hidden = false;
+    return;
+  }
+
   say("Starting the detector", 0);
   banner.hidden = false;
 
@@ -286,6 +316,7 @@ function buildModelPicker() {
 }
 
 async function flipCamera() {
+  if (drive.recording) return; // a new camera would end the recording; the button is off
   facing = facing === "environment" ? "user" : "environment";
   try {
     await openCamera();
@@ -313,6 +344,93 @@ function showReporterState({ gps, gpsTone, sent, message, messageTone }) {
   stats.message.textContent = message;
   stats.message.dataset.tone = messageTone;
   stats.message.hidden = !message;
+}
+
+// ---- Drive recording ----
+
+function toggleRecording() {
+  if (drive.recording) drive.stop();
+  else drive.start(video.srcObject);
+}
+
+// Start screen and status box for ?rec=1 / ?detect=0, and the rescue button for a GPS
+// track left over from a drive that did not end cleanly.
+function setUpRecordingScreen() {
+  if (REC_AUTO) startButton.textContent = "Start recording";
+  if (!DETECT) {
+    document.querySelectorAll("[data-detect]").forEach((el) => { el.hidden = true; });
+    document.getElementById("model-picker").hidden = true;
+  }
+  const leftover = DriveRecorder.leftoverGpx();
+  if (leftover) {
+    const button = document.getElementById("leftover");
+    button.textContent = `Save GPS track from last drive (${leftover.count} fixes)`;
+    button.hidden = false;
+    button.addEventListener("click", () => {
+      download(leftover);
+      DriveRecorder.clearLeftover();
+      button.hidden = true;
+    });
+  }
+}
+
+let filesShown = "";
+function showDriveState({ recording, elapsedMs, clips, fixes, lastFixAt, files, problem }) {
+  recBadge.hidden = !recording;
+  recTime.textContent = clock(elapsedMs);
+  recButton.setAttribute("aria-pressed", String(recording));
+  recButton.title = recording ? "Stop recording" : "Record drive";
+  document.getElementById("switch-camera").disabled = recording;
+  document.querySelectorAll("[data-rec]").forEach((el) => { el.hidden = !recording && !clips; });
+  // Track: how many GPS points are logged. Amber when no new point came in for a
+  // while (tunnel, lost signal), since those minutes cannot be placed on the map.
+  const stale = recording && Date.now() - lastFixAt > 10_000;
+  stats.fixes.textContent = `${fixes} ${fixes === 1 ? "point" : "points"}`;
+  stats.fixes.dataset.tone = stale ? "warn" : "";
+  stats.clips.textContent = `${clips} ${clips === 1 ? "clip" : "clips"}`;
+  if (problem) {
+    stats.message.textContent = problem;
+    stats.message.dataset.tone = "bad";
+    stats.message.hidden = false;
+  }
+
+  // File list with Save buttons. Only rebuilt when the files change.
+  const key = files.map((f) => `${f.name}${f.url ? "" : "-"}`).join("|");
+  if (key === filesShown) return;
+  filesShown = key;
+  filesBox.hidden = files.length === 0;
+  document.getElementById("files-count").textContent = files.length ? `(${files.length})` : "";
+  // GPS track first, then the clips. Short names: the drive's start time is the same
+  // for all of them and is in the full file name that gets saved.
+  const sorted = [...files].sort((a, b) => b.name.endsWith(".gpx") - a.name.endsWith(".gpx"));
+  filesList.replaceChildren(...sorted.map((f) => {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = f.name.endsWith(".gpx") ? "GPS track (.gpx)" : f.name.replace(/^drive_\w+?Z_/, "");
+    name.title = f.name;
+    li.append(name);
+    if (f.url) {
+      const save = document.createElement("button");
+      save.type = "button";
+      save.textContent = "Save";
+      save.addEventListener("click", () => download(f));
+      li.append(save);
+    } else {
+      const gone = document.createElement("small");
+      gone.textContent = "Not kept"; // older clips are dropped from memory
+      li.append(gone);
+    }
+    return li;
+  }));
+}
+
+// 65000 -> "1:05", 3725000 -> "1:02:05"
+function clock(ms) {
+  const t = Math.floor(ms / 1000);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 }
 
 // Show a message on the start screen and on top of the camera picture.

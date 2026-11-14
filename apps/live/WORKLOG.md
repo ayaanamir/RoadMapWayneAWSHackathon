@@ -232,3 +232,16 @@ Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on
   new deploy. Settings only take effect on the next deploy, so a paste alone is not enough.
 - Quick check after a deploy: send a tiny JPEG to `/api/upload?name=test.jpg` and expect
   200 with an `image_url`.
+
+## Drive recording + GPS log (branch live/drive-recorder, for Muq / pipeline)
+
+- New `recorder.js`: records the raw camera with MediaRecorder (mp4 on iPhone, else webm,
+  4 Mbps, 1 s chunks), a new file every 5 min (next file starts before the old one closes,
+  about 50 ms gap). Each file comes with a JSON sidecar (Muq's field names) and the GPX
+  track so far. Files auto-download and are listed with Save buttons.
+- GPS: reporter.js now hands every fix to the recorder (`maximumAge: 0`). Track kept in
+  localStorage every 10 s; a leftover track can be saved from the start screen.
+- Screen wake lock while recording. Big REC dot and time top right. Rows for GPS fixes and
+  clips. `?rec=1` auto-starts, `?detect=0` records without the model, `?seg=` for tests.
+- Tested on the laptop with a fake camera and fake GPS, 6 s files: rotation, sidecar
+  fields, GPX 1.1, videos play at 1280x720, leftover rescue. Not yet on the iPhone.
