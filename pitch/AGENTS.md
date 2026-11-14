@@ -1,6 +1,8 @@
 # Area: `pitch/` — owner: Live
 
 Also read the root `AGENTS.md`.
+Before starting, read `WORKLOG.md` here to see what is already in progress, and add a
+short entry for your task.
 
 ## Job
 - `SCRIPT.md`: the 3-minute pitch in plain language (no "backfill", no legal terms).
