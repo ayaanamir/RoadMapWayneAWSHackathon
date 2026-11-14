@@ -10,5 +10,5 @@
 - [ ] #51 Rehearsed twice, under 3 minutes
 
 ## By Sun 11:30 AM (M5)
-- [ ] #52 Shipyard submission text + screenshots
+- [ ] #52 Shipyard submission text + screenshots (text drafted in `SUBMISSION.md`; screenshots and `[fill]` spots on Sunday morning)
 - [ ] Fill the `[fill]` spots in `SCRIPT.md` after the drive (#35) and rerun `stats/repeat_reports.py`
