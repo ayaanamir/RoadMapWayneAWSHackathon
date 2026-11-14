@@ -115,18 +115,20 @@ function renderPanel(p) {
   events.sort((a, b) => new Date(a.at) - new Date(b.at));
 
   const cityPhoto = [...p.city_reports].reverse().find((r) => r.photo_url)?.photo_url;
-  const ourFrame = p.detections.at(-1);
+  const ourFrame = p.detections.filter((d) => d.verdict === 'pothole').at(-1) || p.detections.at(-1);
   const photos = (cityPhoto || ourFrame) ? `
     <div class="photos">
       <figure>${cityPhoto ? `<img src="${esc(cityPhoto)}" alt="City report photo" onerror="this.outerHTML='<div class=none>Photo unavailable</div>'">` : '<div class="none">No city photo</div>'}
         <figcaption>City report</figcaption></figure>
       <figure>${ourFrame ? `<img src="${esc(ourFrame.image_url)}" alt="Our latest frame" onerror="this.outerHTML='<div class=none>Frame unavailable</div>'">` : '<div class="none">Not driven yet</div>'}
-        <figcaption>${ourFrame ? 'Ours, ' + esc(fmtTime(ourFrame.captured_at)) : 'Our footage'}</figcaption></figure>
+        <figcaption>${ourFrame ? 'Ours, ' + esc(fmtTime(ourFrame.captured_at)) : 'Our footage'}</figcaption>
+        ${ourFrame ? `<div class="verdict">${esc(VERDICT[ourFrame.verdict] || ourFrame.verdict)}${ourFrame.verdict_reason ? '. ' + esc(ourFrame.verdict_reason) : ''}</div>` : ''}</figure>
     </div>` : '';
 
   document.getElementById('panel').innerHTML = `
     <h1 class="place">${esc(p.address || 'Unnamed spot')}</h1>
     <div class="status ${esc(p.state)}"><span class="dot ${esc(p.state)}"></span>${esc(LABEL[p.state] || p.state)}</div>
+    <a class="report-link" href="/report?id=${encodeURIComponent(p.pothole_id)}">Evidence report</a>
     ${photos}
     <ol class="timeline">
       ${events.map((e) => `<li class="${e.cls}">
