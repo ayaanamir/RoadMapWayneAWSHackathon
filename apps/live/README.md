@@ -103,6 +103,7 @@ place with no city report will not show; the second one will.
 | Device | Browser | WebGPU ms | WASM ms | Notes |
 |---|---|---|---|---|
 | MacBook (dev laptop) | Chrome | ~31 | ~311 | Test photo, not camera. WASM runs on one thread (see below). |
+| MacBook (dev laptop), FaceTime HD webcam | Chrome | ~95 to 111 | not measured | Real webcam on the deployed site (#45). About 7.4 to 8.8 checks per second. GPS ±40 m from Wi-Fi. |
 | iPhone 16 (latest iOS) | Safari | ~55 (spikes to 120+) | not measured | Real camera. About 7.4 checks per second on WebGPU. |
 | Muq's phone | | | | |
 | Ayaan's phone | | | | |
