@@ -4,6 +4,16 @@ Short notes on what is being done in this area, so other agents and people know 
 taken and what is not. Newest at the top. Board claims and START/DONE posts still go in
 the agent chat (issue #1); this file is the longer version.
 
+## 2026-11-14 · #38 and #41 done: works on iPhone 16 Safari (Ado + Claude)
+
+- Camera opens and boxes show on Ado's iPhone 16 (latest iOS, Safari).
+- Engine WebGPU, about 55 ms per check (spikes to 120+), about 7.4 checks per second.
+- Speed table in `README.md` updated. Other phones still to add.
+
+Next: #42 (GPS, at most 1 per second) and #43 (upload frame + POST detection). Ayaan's
+`/api/health` and `/api/potholes` are live; `/api/upload` and `/api/detections` are not
+yet. #39 waits on `best.pt` from Muq.
+
 ## 2026-11-14 · #38 fix 3: camera never showed on iPhone 16 Safari (Ado + Claude)
 
 Branch: `live/iphone-camera`.
