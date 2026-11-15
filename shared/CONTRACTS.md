@@ -1,6 +1,8 @@
-# Contracts — version 4
+# Contracts — version 5
 
-> Changelog: v4 — Detection gets optional `camera` (`phone` | `dashcam`); dash-cam sightings get a
+> Changelog: v5 — Pothole gets `owner` (who fixes the road, where to report it): `{ key: city|state,
+> agency, short, via, route, reason }`. Nothing renamed or removed.
+> v4 — Detection gets optional `camera` (`phone` | `dashcam`); dash-cam sightings get a
 > vision check worded for small, far-away potholes. Nothing renamed or removed.
 > v3 — images on Cloudflare R2 (public bucket) instead of Vercel Blob; new
 > pothole state `unreported`; only verified detections create new potholes.
@@ -48,7 +50,8 @@
 ### Pothole (what the map shows)
 `pothole_id`, `lat`, `lon`, `address`, `city_reports[]` (by `created_at`), `detections[]`
 (by `captured_at`), `state` (`still_there|fixed_confirmed|reported_only|unknown`),
-`last_seen_at|null`. State `unreported` = our verified detections, no city report.
+`last_seen_at|null`, `owner` (v5: `{ key: "city"|"state", agency, short, via, route|null, reason }`,
+from the street name; state routes go to MDOT, everything else to the City of Detroit). State `unreported` = our verified detections, no city report.
 
 **State rule:** `still_there` = latest city report Closed/Archived and a `pothole`
 detection after its `closed_at`. `fixed_confirmed` = closed, and our latest detection after

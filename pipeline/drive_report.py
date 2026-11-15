@@ -115,7 +115,7 @@ def main():
             passed.append(p)
 
     # Each sighting -> nearest earlier city report
-    rows = []
+    rows, owners = [], []
     for d in dets:
         best, bd = None, 1e9
         for p in potholes:
@@ -125,6 +125,12 @@ def main():
             if m < bd:
                 best, bd = p, m
         near = best if bd <= NEAR_M else None
+        # Who owns the road here: the nearest pothole of any kind (usually the one this
+        # sighting made) carries `owner` from the API (City of Detroit or MDOT).
+        own = near or min(potholes, key=lambda p: haversine_m(d["lat"], d["lon"], p["lat"], p["lon"]), default=None)
+        if own and haversine_m(d["lat"], d["lon"], own["lat"], own["lon"]) > NEAR_M:
+            own = None
+        owners.append((own or {}).get("owner"))
         rows.append((d, near, bd))
 
     confirmed = [r for r in rows if r[0]["verdict"] == "pothole"]
@@ -139,7 +145,7 @@ def main():
     VLABEL = {"pothole": ("Pothole", "v-pothole"), "patch": ("Patched", "v-patch"),
               "shadow": ("Not a pothole", "v-shadow"), "unverified": ("Model only, not checked", "v-unv")}
 
-    def card(i, d, near, dist_m):
+    def card(i, k, d, near, dist_m):
         lab, cls = VLABEL.get(d["verdict"], VLABEL["unverified"])
         src = img_src(d.get("image_url", ""))
         img = f'<img src="{html.escape(src)}" alt="Frame {i}" loading="lazy">' if src else '<div class="noimg">no photo</div>'
@@ -158,6 +164,10 @@ def main():
             prev = f'<p class="prev">{line}. {links}</p>'
         else:
             prev = f'<p class="new">No city report within {NEAR_M} m. Never reported.</p>'
+        owner = owners[k]
+        if owner and d["verdict"] != "shadow":
+            prev += (f'<p class="to">Report to <b>{html.escape(owner["short"])}</b>, through {html.escape(owner["via"])}. '
+                     f'<span>{html.escape(owner["reason"])}</span></p>')
         return (f'<article class="card" id="s{i}"><div class="ph">{img}</div><div class="body">'
                 f'<div class="top"><span class="num">#{i}</span><span class="verdict {cls}">{lab}</span>'
                 f'<span class="meta">{when} · model {d["confidence"]:.2f} · {d["lat"]:.5f}, {d["lon"]:.5f}</span></div>'
@@ -165,7 +175,7 @@ def main():
 
     # Confirmed first, then the rest in time order
     order = sorted(range(len(rows)), key=lambda k: (rows[k][0]["verdict"] != "pothole", rows[k][0]["captured_at"]))
-    cards = "\n".join(card(n + 1, *rows[k]) for n, k in enumerate(order))
+    cards = "\n".join(card(n + 1, k, *rows[k]) for n, k in enumerate(order))
     idx = {k: n + 1 for n, k in enumerate(order)}
 
     mapdata = {
@@ -237,6 +247,7 @@ h2{font-size:18px;margin:0 0 12px}
 .v-pothole{background:var(--pothole)}.v-patch{background:var(--patch)}.v-shadow{background:var(--shadow)}.v-unv{background:var(--unv)}
 .meta{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums}
 .prev,.new{margin:10px 0 0}.new{color:var(--mute)}a{color:var(--unv)}
+.to{margin:6px 0 0}.to span{color:var(--mute)}
 .empty{color:var(--mute)}
 @media (max-width:640px){.card{grid-template-columns:1fr}h1{font-size:24px}#map{height:320px}}
 @media print{#map{height:360px}.card{break-inside:avoid}}
