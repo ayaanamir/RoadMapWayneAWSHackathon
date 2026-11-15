@@ -203,3 +203,13 @@ ALTER TABLE detections ADD COLUMN IF NOT EXISTS verify_attempts integer NOT NULL
 -- Contract v4: which model/camera produced a sighting ('phone' close-up or 'dashcam').
 -- Dash-cam sightings get the dash-cam vision prompt. NULL = unknown (older rows).
 ALTER TABLE detections ADD COLUMN IF NOT EXISTS camera text CHECK (camera IN ('phone','dashcam'));
+
+-- ---------------------------------------------------------------------------
+-- Added for #133. Small-model check that a city 'Potholes' report really is road damage
+-- (ingest_city.py). 'not_pothole' reports keep pothole_id = NULL: stored, not shown.
+-- Internal only: GET /api/potholes doesn't return these columns (contract unchanged).
+-- ---------------------------------------------------------------------------
+ALTER TABLE city_reports ADD COLUMN IF NOT EXISTS check_verdict text
+  CHECK (check_verdict IN ('pothole', 'not_pothole'));
+ALTER TABLE city_reports ADD COLUMN IF NOT EXISTS check_reason text;
+ALTER TABLE city_reports ADD COLUMN IF NOT EXISTS check_model text;
