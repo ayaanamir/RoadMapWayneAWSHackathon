@@ -8,6 +8,7 @@
 
 import { API_BASE } from "./config.js";
 import { DriveLog } from "./drivelog.js";
+import { initDriveVideo, syncSeekButtons } from "./drivevideo.js";
 
 const NEAR_M = 50;    // a sighting this close to a city report counts as "at" it
 const PASSED_M = 25;  // a city report this close to the route counts as "driven past"
@@ -28,6 +29,7 @@ function meters(a, b, c, d) {
 }
 
 async function main() {
+  initDriveVideo();
   const log = DriveLog.load();
   if (!log) {
     $("headline").textContent = "No drive yet";
@@ -131,6 +133,7 @@ async function main() {
       : `<p class="empty">${sightings.length ? "No confirmed potholes or patches. Tap “Everything the model saw” to see what it flagged." : "The model has not flagged anything on this drive yet."}</p>`;
     for (const img of document.querySelectorAll(".ph img")) img.addEventListener("load", placeBox, { once: true });
     document.querySelectorAll(".ph img").forEach((img) => img.complete && placeBox({ target: img }));
+    syncSeekButtons();
   };
   for (const b of document.querySelectorAll("#filters button")) {
     b.addEventListener("click", () => {
@@ -184,6 +187,7 @@ function card(r) {
         ${tag}<span class="meta">${fmtTime(s.t)} · model ${Math.round(s.conf * 100)}%</span></div>
       ${prev}
       ${to}
+      <button type="button" class="seek" data-t="${esc(s.t)}" hidden></button>
     </div>
   </article>`;
 }

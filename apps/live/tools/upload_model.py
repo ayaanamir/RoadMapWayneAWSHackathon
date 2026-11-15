@@ -4,6 +4,7 @@
     pip install boto3
     python3 apps/live/tools/upload_model.py apps/live/model/yolo11n.onnx
     python3 apps/live/tools/upload_model.py best.onnx --name pothole.onnx    # for #39
+    python3 apps/live/tools/upload_model.py drive_..._seg1.mp4 --folder videos  # drive video for the report
 
 Reads R2_* values from the repo's .env file (never commit that file).
 Saves the file as models/<name> in the bucket and prints its public URL.
@@ -16,6 +17,8 @@ from pathlib import Path
 import boto3
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+# Videos need their real type or browsers won't play them from R2.
+CONTENT_TYPES = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime"}
 
 
 def read_env(path):
@@ -34,6 +37,7 @@ def main():
     parser = argparse.ArgumentParser(description="Upload a model file to R2.")
     parser.add_argument("file", type=Path, help="the .onnx file to upload")
     parser.add_argument("--name", help="file name in the bucket (default: same as the file)")
+    parser.add_argument("--folder", default="models", help="folder in the bucket, e.g. videos for a drive video")
     args = parser.parse_args()
 
     env = {**read_env(REPO_ROOT / ".env"), **os.environ}
@@ -53,13 +57,13 @@ def main():
         region_name="auto",
     )
 
-    key = f"models/{args.name or args.file.name}"
+    key = f"{args.folder}/{args.name or args.file.name}"
     size_mb = args.file.stat().st_size / 1_000_000
     print(f"Uploading {args.file} ({size_mb:.1f} MB) to {env['R2_BUCKET']}/{key} ...")
     r2.upload_file(
         str(args.file), env["R2_BUCKET"], key,
         ExtraArgs={
-            "ContentType": "application/octet-stream",
+            "ContentType": CONTENT_TYPES.get(args.file.suffix.lower(), "application/octet-stream"),
             # Let browsers keep a copy for an hour so the page loads faster on refresh.
             "CacheControl": "public, max-age=3600",
         },
