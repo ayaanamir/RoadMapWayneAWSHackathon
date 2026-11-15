@@ -142,6 +142,12 @@ def main():
         c.get("closed_at") and c["closed_at"] < r[0]["captured_at"] for c in r[1]["city_reports"])]
     seen_ids = {r[1]["pothole_id"] for r in at_prev}
 
+    # Road owner. MDOT (state routes) = white tag with a diamond, like the Michigan route
+    # signs; City of Detroit = quiet outlined tag.
+    DIAMOND = ('<svg class="dia" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">'
+               '<path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="#fff" stroke="#0f0f10" stroke-width="1.2"/></svg>')
+    AGENCY = {"city": "City of Detroit", "state": "MDOT"}
+
     VLABEL = {"pothole": ("Pothole", "v-pothole"), "patch": ("Patched", "v-patch"),
               "shadow": ("Not a pothole", "v-shadow"), "unverified": ("Model only, not checked", "v-unv")}
 
@@ -165,11 +171,18 @@ def main():
         else:
             prev = f'<p class="new">No city report within {NEAR_M} m. Never reported.</p>'
         owner = owners[k]
-        if owner and d["verdict"] != "shadow":
+        show_owner = bool(owner) and d["verdict"] != "shadow"
+        tag = ""
+        if show_owner and owner["key"] == "state":
+            tag = f'<span class="agency state">{DIAMOND}MDOT{(" " + html.escape(owner["route"])) if owner.get("route") else ""}</span>'
+        elif show_owner:
+            tag = '<span class="agency city">City of Detroit</span>'
+        if show_owner:
             prev += (f'<p class="to">Report to <b>{html.escape(owner["short"])}</b>, through {html.escape(owner["via"])}. '
                      f'<span>{html.escape(owner["reason"])}</span></p>')
-        return (f'<article class="card" id="s{i}"><div class="ph">{img}</div><div class="body">'
-                f'<div class="top"><span class="num">#{i}</span><span class="verdict {cls}">{lab}</span>'
+        state_cls = " state" if show_owner and owner["key"] == "state" else ""
+        return (f'<article class="card{state_cls}" id="s{i}"><div class="ph">{img}</div><div class="body">'
+                f'<div class="top"><span class="num">#{i}</span><span class="verdict {cls}">{lab}</span>{tag}'
                 f'<span class="meta">{when} · model {d["confidence"]:.2f} · {d["lat"]:.5f}, {d["lon"]:.5f}</span></div>'
                 f'{prev}</div></article>')
 
@@ -206,12 +219,20 @@ def main():
                  + f". The route passed {len(passed)} spot{'s' if len(passed) != 1 else ''} the city has a report for"
                  + f"; we saw something at {len(seen_ids)}.")
 
+    # Who to send what: confirmed potholes and patches per road owner.
+    per = {k: sum(1 for (d, *_), o in zip(rows, owners)
+                  if o and o["key"] == k and d["verdict"] in ("pothole", "patch")) for k in AGENCY}
+    sendto = " · ".join(f'{DIAMOND if k == "state" else ""}<b>{AGENCY[k]}</b> {per[k]}'
+                        for k in ("state", "city") if per[k])
+    sendto = f'<p class="sendto">Send to: {sendto}</p>' if sendto else ""
+
     title_date = (start - __import__('datetime').timedelta(hours=5)).strftime("%a %b %-d, %Y · %-I:%M %p")
     page = TEMPLATE.replace("__TITLE__", html.escape(f"Drive report · {title_date}")) \
         .replace("__DATE__", html.escape(title_date)) \
         .replace("__HEADLINE__", html.escape(headline)) \
         .replace("__STATS__", stat_html) \
         .replace("__BREAKDOWN__", html.escape(breakdown)) \
+        .replace("__SENDTO__", sendto) \
         .replace("__CARDS__", cards or '<p class="empty">The model saw nothing on this drive.</p>') \
         .replace("__DATA__", json.dumps(mapdata))
     path = os.path.join(out, "report.html")
@@ -248,6 +269,10 @@ h2{font-size:18px;margin:0 0 12px}
 .meta{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums}
 .prev,.new{margin:10px 0 0}.new{color:var(--mute)}a{color:var(--unv)}
 .to{margin:6px 0 0}.to span{color:var(--mute)}
+.dia{flex:none;vertical-align:-1px;margin-right:5px}
+.agency{display:inline-flex;align-items:center;font:600 12px ui-monospace,monospace;padding:2px 8px;border-radius:6px}
+.agency.state{background:#fff;color:#111;box-shadow:0 0 0 1px #111}.agency.city{border:1px solid var(--line);color:var(--mute)}
+.card.state{border-left:3px solid var(--ink)}.sendto{color:var(--mute);margin:-6px 0 16px}.sendto b{color:var(--ink)}
 .empty{color:var(--mute)}
 @media (max-width:640px){.card{grid-template-columns:1fr}h1{font-size:24px}#map{height:320px}}
 @media print{#map{height:360px}.card{break-inside:avoid}}
@@ -255,6 +280,7 @@ h2{font-size:18px;margin:0 0 12px}
 <header><div class="k">Drive report · __DATE__</div><h1>__HEADLINE__</h1></header>
 <div class="stats">__STATS__</div>
 <p class="breakdown">__BREAKDOWN__</p>
+__SENDTO__
 <div id="map"></div>
 <div class="legend"><span><i style="background:var(--pothole)"></i>Pothole</span><span><i style="background:var(--patch)"></i>Patched</span><span><i style="background:var(--shadow)"></i>Not a pothole</span><span><i style="background:var(--unv)"></i>Not checked</span><span><i style="background:transparent;border:2px solid var(--prev)"></i>Earlier city report</span></div>
 <h2>Sightings</h2>

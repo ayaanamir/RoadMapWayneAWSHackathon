@@ -17,6 +17,8 @@ const tz = { timeZone: "America/Detroit" };
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", ...tz });
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", ...tz });
 const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+const DIAMOND = (px = 10) => `<svg class="dia" viewBox="0 0 10 10" width="${px}" height="${px}" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="#fff" stroke="#0f0f10" stroke-width="1.2"/></svg>`;
+const AGENCY = { city: "City of Detroit", state: "MDOT" };
 const VERDICT = { pothole: "Pothole", patch: "Patched", shadow: "Not a pothole", unverified: "Not checked" };
 
 function meters(a, b, c, d) {
@@ -102,10 +104,30 @@ async function main() {
   const rank = { pothole: 0, patch: 1, unverified: 2, shadow: 3 };
   const ordered = rows.map((r, i) => ({ ...r, i })).sort((a, b) => (rank[a.s.verdict] ?? 2) - (rank[b.s.verdict] ?? 2) || a.s.t.localeCompare(b.s.t));
   ordered.forEach((r, n) => { r.n = n + 1; });
+  // Who to send what: real potholes and patches per road owner.
+  const real = (r) => r.s.verdict === "pothole" || r.s.verdict === "patch";
+  const perAgency = (k) => rows.filter((r) => real(r) && r.owner?.key === k).length;
+  const sendParts = ["state", "city"].filter((k) => perAgency(k))
+    .map((k) => `${k === "state" ? DIAMOND() : ""}<b>${AGENCY[k]}</b> ${perAgency(k)}`);
+  $("sendto").innerHTML = sendParts.length ? `Send to: ${sendParts.join(" · ")}` : "";
+
   let filter = "real";
+  let agency = null; // "city" | "state" | null for every road
+  const drawAgencyFilters = () => {
+    $("agency-filters").innerHTML = ["city", "state"].map((k) =>
+      `<button type="button" data-a="${k}" aria-pressed="${agency === k}">${k === "state" ? DIAMOND() : ""}${AGENCY[k]} ${rows.filter((r) => r.owner?.key === k && (filter === "all" || real(r))).length}</button>`).join("");
+  };
+  $("agency-filters").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    agency = agency === b.dataset.a ? null : b.dataset.a;
+    draw();
+  });
   const draw = () => {
-    const shown = ordered.filter((r) => filter === "all" || r.s.verdict === "pothole" || r.s.verdict === "patch");
+    drawAgencyFilters();
+    const shown = ordered.filter((r) => (filter === "all" || real(r)) && (!agency || r.owner?.key === agency));
     $("cards").innerHTML = shown.length ? shown.map(card).join("")
+      : agency ? `<p class="empty">Nothing on ${AGENCY[agency]} roads with this filter.</p>`
       : `<p class="empty">${sightings.length ? "No confirmed potholes or patches. Tap “Everything the model saw” to see what it flagged." : "The model has not flagged anything on this drive yet."}</p>`;
     for (const img of document.querySelectorAll(".ph img")) img.addEventListener("load", placeBox, { once: true });
     document.querySelectorAll(".ph img").forEach((img) => img.complete && placeBox({ target: img }));
@@ -148,14 +170,18 @@ function card(r) {
   } else {
     prev = `<p class="new">No city report within ${NEAR_M} m.${s.verdict === "pothole" ? " Never reported." : ""}</p>`;
   }
-  const to = owner && s.verdict !== "shadow"
+  const showOwner = owner && s.verdict !== "shadow";
+  const to = showOwner
     ? `<p class="to">Report to <b>${esc(owner.short)}</b>, through ${esc(owner.via)}. <span>${esc(owner.reason)}</span></p>`
     : "";
-  return `<article class="card" id="s${r.n}">
+  const tag = !showOwner ? ""
+    : owner.key === "state" ? `<span class="agency state">${DIAMOND()}MDOT${owner.route ? ` ${esc(owner.route)}` : ""}</span>`
+    : `<span class="agency city">City of Detroit</span>`;
+  return `<article class="card${showOwner && owner.key === "state" ? " state" : ""}" id="s${r.n}">
     <div class="ph">${img}</div>
     <div class="body">
       <div class="top"><span class="num">#${r.n}</span><span class="verdict v-${esc(s.verdict)}">${esc(VERDICT[s.verdict] || s.verdict)}</span>
-        <span class="meta">${fmtTime(s.t)} · model ${Math.round(s.conf * 100)}%</span></div>
+        ${tag}<span class="meta">${fmtTime(s.t)} · model ${Math.round(s.conf * 100)}%</span></div>
       ${prev}
       ${to}
     </div>
@@ -195,6 +221,10 @@ function drawMap(route, rows, potholes, seenIds) {
       .bindTooltip(`#${r.n} ${VERDICT[r.s.verdict] || ""}`)
       .on("click", () => document.getElementById(`s${r.n}`)?.scrollIntoView({ behavior: "smooth", block: "center" }))
       .addTo(map);
+    if (r.owner?.key === "state" && r.s.verdict !== "shadow") {
+      L.marker([r.s.lat, r.s.lon], { interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "mdot-mark", html: DIAMOND(9), iconSize: [9, 9], iconAnchor: [-3, 12] }) }).addTo(map);
+    }
   }
   if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 17 });
   else map.setView([42.3314, -83.0458], 13);

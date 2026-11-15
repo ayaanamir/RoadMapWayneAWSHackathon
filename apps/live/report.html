@@ -44,6 +44,15 @@
     .meta { color: var(--mute); font: 12px Geist Mono, ui-monospace, monospace; }
     .prev, .new { margin: 8px 0 0; font-size: 14px; } .new { color: var(--mute); }
     .to { margin: 6px 0 0; font-size: 14px; } .to span { color: var(--mute); }
+    /* Road owner. MDOT (state routes) = white tag with a diamond, like the Michigan route
+       signs. City of Detroit = quiet outlined tag. */
+    .dia { flex: none; vertical-align: -1px; margin-right: 6px; }
+    .agency { display: inline-flex; align-items: center; font: 600 12px Geist Mono, ui-monospace, monospace; padding: 2px 8px; border-radius: 6px; }
+    .agency.state { background: #fff; color: #111; } .agency.state .dia { margin-right: 5px; }
+    .agency.city { border: 1px solid var(--line); color: var(--mute); }
+    .card.state { border-left: 3px solid #fff; }
+    .sendto { color: var(--mute); font-size: 14px; margin: -8px 0 16px; } .sendto b { color: var(--ink); }
+    .mdot-mark { background: none; border: 0; }
     a { color: var(--unv); }
     .empty { color: var(--mute); }
     .bar { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
@@ -60,6 +69,7 @@
     <h1 id="headline">Loading…</h1>
     <div class="stats" id="stats"></div>
     <p class="breakdown" id="breakdown"></p>
+    <p class="sendto" id="sendto"></p>
     <div id="map"></div>
     <div class="legend">
       <span><i style="background:var(--pothole)"></i>Pothole</span>
@@ -67,12 +77,14 @@
       <span><i style="background:var(--shadow)"></i>Not a pothole</span>
       <span><i style="background:var(--unv)"></i>Not checked</span>
       <span><i style="border:2px solid var(--prev)"></i>Earlier city report</span>
+      <span><svg class="dia" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="#fff" stroke="#0f0f10" stroke-width="1.2"/></svg>On a state route (MDOT)</span>
     </div>
     <h2>Sightings</h2>
     <div class="filters" id="filters">
       <button type="button" data-f="real" aria-pressed="true">Potholes &amp; patches</button>
       <button type="button" data-f="all" aria-pressed="false">Everything the model saw</button>
     </div>
+    <div class="filters" id="agency-filters" aria-label="Who fixes the road"></div>
     <div id="cards"></div>
     <div class="bar">
       <a href="/live">Back to camera</a>
