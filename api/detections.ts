@@ -21,6 +21,14 @@ import { verifyImage } from './_lib/verify';
 const MATCH_M = 50;
 const VERIFY_MAX = 10; // vision checks per request
 const VERIFY_PARALLEL = 3;
+const RETRY_STALE = 5;        // older unchecked sightings re-checked per request (heals model outages)
+const MAX_ATTEMPTS = 3;       // never pay for the same broken image more than this
+
+/** Server-side vision check is on (key + model set, not switched off). */
+const verifyOn = () =>
+  !!process.env.OPENROUTER_API_KEY && !!process.env.OPENROUTER_MODEL && process.env.VERIFY_ON_SERVER !== '0';
+/** The image is somewhere the vision model can fetch it. */
+const checkableUrl = (u: string) => /^https:\/\//.test(u) && !u.includes('.invalid/');
 const ADDRESS_M = 100; // borrow the nearest city report's address for new potholes
 
 // Haversine in metres between row aliases a and b, with a cheap bbox prefilter
@@ -72,7 +80,7 @@ async function place(sql: Sql, ids: string[]) {
 
   // 3. The rest: create a pothole when the contract allows it (oldest first).
   const loose = (await sql.query(
-    `SELECT d.detection_id, d.lat, d.lon, d.verdict,
+    `SELECT d.detection_id, d.lat, d.lon, d.verdict, d.image_url,
             EXISTS (SELECT 1 FROM detections o
                      WHERE o.detection_id <> d.detection_id
                        AND o.verdict IN ('pothole', 'unverified')
@@ -84,7 +92,11 @@ async function place(sql: Sql, ids: string[]) {
   )) as Row[];
 
   for (const d of loose) {
-    const creates = d.verdict === 'pothole' || (d.verdict === 'unverified' && d.has_neighbour);
+    // Contract v3: only verified detections create new potholes. Two unverified sightings may
+    // create one only when they can never be checked (vision check off, or no fetchable image);
+    // otherwise they wait, stored with pothole_id = null, until the check gives a verdict.
+    const waitsForCheck = verifyOn() && checkableUrl(d.image_url);
+    const creates = d.verdict === 'pothole' || (d.verdict === 'unverified' && d.has_neighbour && !waitsForCheck);
     if (!creates) continue;
     const newId = `ph_${d.detection_id.replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}`;
     // Insert only if nothing appeared within 50 m meanwhile (earlier loop turn or a
@@ -150,6 +162,23 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const toCheck = verifiable(dets);
+  // Also re-check a few older sightings that are still unverified (e.g. the model was down).
+  if (verifyOn()) {
+    try {
+      const fresh = new Set(toCheck.map((d) => d.detection_id));
+      const stale = (await sql.query(
+        `SELECT detection_id, image_url, bbox, to_char(captured_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS captured_at
+           FROM detections
+          WHERE verdict = 'unverified' AND verify_attempts < ${MAX_ATTEMPTS}
+            AND created_at < now() - interval '1 minute' AND created_at > now() - interval '2 days'
+            AND image_url LIKE 'https://%' AND image_url NOT LIKE '%.invalid/%'
+          ORDER BY created_at DESC LIMIT ${RETRY_STALE}`,
+      )) as Row[];
+      for (const r of stale) if (!fresh.has(r.detection_id)) toCheck.push(r as unknown as Detection);
+    } catch (err) {
+      console.error('verify: stale lookup failed', err); // never blocks the producer
+    }
+  }
   if (toCheck.length) {
     // ?verify=wait finishes the check before answering (tests, or a producer that wants it).
     const job = verifyAndPlace(sql, toCheck);
@@ -163,10 +192,9 @@ export async function POST(request: Request): Promise<Response> {
 
 /** Unverified detections with a real image, newest first, capped at VERIFY_MAX. */
 export function verifiable(dets: Detection[]): Detection[] {
-  const { OPENROUTER_API_KEY, OPENROUTER_MODEL, VERIFY_ON_SERVER } = process.env;
-  if (!OPENROUTER_API_KEY || !OPENROUTER_MODEL || VERIFY_ON_SERVER === '0') return [];
+  if (!verifyOn()) return [];
   return dets
-    .filter((d) => d.verdict === 'unverified' && /^https:\/\//.test(d.image_url) && !d.image_url.includes('.invalid/'))
+    .filter((d) => d.verdict === 'unverified' && checkableUrl(d.image_url))
     .sort((a, b) => b.captured_at.localeCompare(a.captured_at))
     .slice(0, VERIFY_MAX);
 }
@@ -182,6 +210,9 @@ export async function verifyAndPlace(sql: Sql, dets: Detection[]) {
   const queue = [...dets];
   async function worker() {
     for (let d = queue.shift(); d; d = queue.shift()) {
+      try {
+        await sql.query(`UPDATE detections SET verify_attempts = verify_attempts + 1 WHERE detection_id = $1`, [d.detection_id]);
+      } catch { /* counting attempts is best-effort */ }
       const checked = await verifyImage(d.image_url, d.bbox, opts);
       if (!checked) {
         done.push({ detection_id: d.detection_id, verdict: null });

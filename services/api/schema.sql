@@ -61,20 +61,30 @@ CREATE INDEX detections_pothole_idx   ON detections (pothole_id);
 CREATE OR REPLACE FUNCTION recompute_pothole(p text) RETURNS text
 LANGUAGE plpgsql AS $$
 DECLARE
-  n_reports   int;
-  n_dets      int;
-  n_verified  int;
-  last_status text;
-  last_closed timestamptz;
-  verdict_now text;
-  new_state   text;
+  n_reports    int;
+  n_pothole    int;
+  n_unverified int;
+  n_dets       int;
+  last_status  text;
+  last_closed  timestamptz;
+  verdict_now  text;
+  new_state    text;
 BEGIN
   SELECT count(*) INTO n_reports FROM city_reports WHERE pothole_id = p;
-  SELECT count(*), count(*) FILTER (WHERE verdict = 'pothole')
-    INTO n_dets, n_verified FROM detections WHERE pothole_id = p;
+  SELECT count(*), count(*) FILTER (WHERE verdict = 'pothole'), count(*) FILTER (WHERE verdict = 'unverified')
+    INTO n_dets, n_pothole, n_unverified FROM detections WHERE pothole_id = p;
 
   IF n_reports = 0 THEN
-    new_state := CASE WHEN n_verified >= 1 OR n_dets >= 2 THEN 'unreported' ELSE 'unknown' END;
+    -- Only positive evidence counts: shadow/patch verdicts are the vision check saying 'not a pothole'.
+    IF n_pothole >= 1 OR n_unverified >= 2 THEN
+      new_state := 'unreported';
+    ELSE
+      -- No city report and nothing positive left: per the contract matching rule this is not a
+      -- pothole. Keep the sightings (pothole_id = null, not shown) and drop the pin.
+      UPDATE detections SET pothole_id = NULL WHERE pothole_id = p;
+      DELETE FROM potholes WHERE pothole_id = p;
+      RETURN 'removed';
+    END IF;
   ELSIF n_dets = 0 THEN
     new_state := 'reported_only';
   ELSE
@@ -186,3 +196,6 @@ CREATE TABLE IF NOT EXISTS label_frames (
   lock_until    timestamptz,
   created_at    timestamptz NOT NULL DEFAULT now()
 );
+
+-- Added for the vision-check retry: how many times the server tried to check this sighting.
+ALTER TABLE detections ADD COLUMN IF NOT EXISTS verify_attempts integer NOT NULL DEFAULT 0;

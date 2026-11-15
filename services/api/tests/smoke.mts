@@ -79,7 +79,9 @@ const det = (over: Record<string, unknown>) => ({
   ...over,
 });
 // Far from any city report (Belle Isle), nudged per run so reruns don't collide.
-const far = () => ({ lat: 42.3405 + Math.random() * 0.004, lon: -82.985 + Math.random() * 0.004 });
+let farN = Math.floor(Math.random() * 1000);
+// Each call is a fresh spot ≥160 m from the last (0.0015° lat), so tests never join each other's pins.
+const far = () => ({ lat: 42.20 + ((farN++ % 2000) * 0.0015), lon: -82.9 + Math.random() * 0.0005 });
 const metres = (m: number) => m / 111_320; // north offset in degrees latitude
 
 console.log('health / potholes');
@@ -247,6 +249,40 @@ await check('without ?verify=wait the answer is immediate and says how many are 
   const r = await post(det({ ...far(), image_url: 'https://img.test/f/flat.jpg' }));
   assert.equal(r.json.verifying, 1);
   await new Promise((ok) => setTimeout(ok, 1500)); // let the background check finish
+});
+
+console.log('verified pins only (contract v3) + re-check of stale sightings');
+await check('2 unchecked sightings with real images do not make a pin before the check; shadows never do', async () => {
+  const spot = far();
+  const a = det({ ...spot, image_url: 'https://img.test/g/flat.jpg' });
+  const b = det({ lat: spot.lat + metres(15), lon: spot.lon, image_url: 'https://img.test/h/flat.jpg' });
+  const r1 = await post(a); const r2 = await post(b);
+  assert.equal(r2.json.results[0].pothole_id, null, 'no pin from unchecked sightings');
+  await new Promise((ok) => setTimeout(ok, 1500));                   // background check → shadow
+  const all = (await body(await potholes.GET(new Request(`${BASE}/api/potholes`)))).json.potholes;
+  assert.ok(!all.some((p: any) => p.detections.some((d: any) => [a.detection_id, b.detection_id].includes(d.detection_id))));
+});
+await check('a no-report pin whose sightings all turn out shadow is removed', async () => {
+  const spot = far();
+  const d1 = det({ ...spot, verdict: 'pothole', source: 'drive' });
+  const pid = (await post(d1)).json.pothole_ids[0];
+  assert.equal((await getPothole(pid)).status, 200);
+  await post({ ...d1, verdict: 'shadow' });                             // producer corrects its verdict
+  assert.equal((await getPothole(pid)).status, 404, 'pin removed');
+});
+await check('stale unverified sightings are re-checked on a later request (outage heals)', async () => {
+  const { neon } = await import('@neondatabase/serverless');
+  const db = neon(url);
+  process.env.VERIFY_ON_SERVER = '0';                                    // simulate the model being down
+  const stale = det({ ...far(), image_url: 'https://img.test/s/hole.jpg' });
+  await post(stale);
+  process.env.VERIFY_ON_SERVER = '1';
+  await db.query(`UPDATE detections SET created_at = now() - interval '5 minutes' WHERE detection_id = $1`, [stale.detection_id]);
+  const r = await postWait(det({ ...far() }));                          // any later request
+  assert.ok(r.json.verified?.some((v: any) => v.detection_id === stale.detection_id && v.verdict === 'pothole'), JSON.stringify(r.json.verified));
+  const [row] = (await db.query(`SELECT verify_attempts, pothole_id FROM detections WHERE detection_id = $1`, [stale.detection_id])) as any[];
+  assert.equal(row.verify_attempts, 1);
+  assert.ok(row.pothole_id, 'verified pothole now makes a pin');
 });
 
 console.log('POST /api/upload');
