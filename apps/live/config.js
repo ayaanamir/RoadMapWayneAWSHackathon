@@ -24,7 +24,7 @@ export const MODELS = {
   dashcam: {
     name: "Dashcam model", short: "Dashcam", file: "pothole-dashcam.onnx",
     url: "/apps/live/model/pothole-dashcam.onnx", // swap the file to ship a new model (one PR)
-    conf: 0.40,
+    conf: 0.05, // v5+v1 85/15 blend: scores run low, 0.05 = best Detroit box F1 (#118)
   },
 };
 
