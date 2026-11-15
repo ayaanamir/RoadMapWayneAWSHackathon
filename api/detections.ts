@@ -12,7 +12,8 @@
 //   `unverified` detections that have a real image; store its verdict and re-match
 //   (so a confirmed live sighting can create a pin / turn one red). Off if
 //   OPENROUTER_API_KEY / OPENROUTER_MODEL are unset or VERIFY_ON_SERVER=0.
-// POST /api/detections?verify=only  body: { checks: [{ image_url, bbox }], prompt?: "live"|"dashcam" } (≤ 30, our R2 images)
+// POST /api/detections?verify=only  body: { checks: [{ image_url, bbox }], prompt?: "live"|"dashcam",
+//   model?: one of VERIFY_TEST_MODELS } (≤ 30, our R2 images)
 //   → { ok, model, results: [{ verdict, reason } | null] }. Vision check only; writes nothing.
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import { json, preflight } from './_lib/http';
@@ -249,6 +250,13 @@ export async function verifyAndPlace(sql: Sql, dets: Detection[]) {
 }
 
 const VERIFY_ONLY_MAX = 30;
+/** Vision models ?verify=only may try instead of OPENROUTER_MODEL (fixed list, so the open
+ *  test route can't be pointed at an expensive model). For comparing cost vs accuracy. */
+const VERIFY_TEST_MODELS = new Set([
+  'google/gemini-2.5-flash-lite', 'google/gemini-3.5-flash-lite', 'google/gemini-2.5-flash',
+  'google/gemini-3.8-flash', 'google/gemini-3.5-flash', 'anthropic/claude-haiku-5.5',
+  'openai/gpt-6-luna', 'openai/gpt-5.4-mini', 'qwen/qwen3-vl-235b-a22b-instruct', 'amazon/nova-2-lite-v1',
+]);
 
 /** ?verify=only — run the vision check on our own R2 images and return the verdicts.
  *  Writes nothing (no detection, no pin). For measuring the check on labelled test frames.
@@ -269,9 +277,12 @@ async function verifyOnly(body: unknown): Promise<Response> {
   const promptName = (body as any)?.prompt ?? 'live';
   if (promptName !== 'live' && promptName !== 'dashcam')
     return json({ ok: false, error: 'prompt must be "live" or "dashcam"' }, 400);
+  const testModel = (body as any)?.model;
+  if (testModel != null && !VERIFY_TEST_MODELS.has(testModel))
+    return json({ ok: false, error: `model must be one of ${[...VERIFY_TEST_MODELS].join(', ')}` }, 400);
   const opts = {
     apiKey: process.env.OPENROUTER_API_KEY!,
-    model: process.env.OPENROUTER_MODEL!,
+    model: (testModel as string | undefined) ?? process.env.OPENROUTER_MODEL!,
     baseUrl: process.env.OPENROUTER_BASE_URL || undefined,
     prompt: promptName === 'dashcam' ? VERIFY_PROMPT_DASHCAM : undefined,
   };
