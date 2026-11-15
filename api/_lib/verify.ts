@@ -19,6 +19,22 @@ Decide what is really there and answer with ONLY this JSON, nothing else:
   cover, road marking, speed bump, debris, or no road visible.
 If you are not sure it is a hole, do not say "pothole".`;
 
+/** Experimental wording for dash-cam sightings, where potholes are small and far away.
+ *  Only used through ?verify=only&prompt=dashcam until it is measured. */
+export const VERIFY_PROMPT_DASHCAM = `You check frames from a dash camera on a car driving in a city.
+An automatic detector thinks there is a pothole in this frame{BOX}.
+Potholes in dash-cam frames are often small, far away, blurry and low in contrast,
+so you will rarely see depth clearly. Judge only the boxed area.
+
+Answer with ONLY this JSON, nothing else:
+{"verdict": "pothole" | "patch" | "shadow", "reason": "<one short sentence about what you see>"}
+
+- "pothole": a dark, irregular, broken-out spot in the road surface: ragged or crumbling edges,
+  missing asphalt, a dark blob or cluster of broken pieces. Visible depth is NOT required.
+- "patch": a filled repair: a smooth, uniform area with clean straight or rounded edges.
+- "shadow": anything else: thin cracks or seams (lines, not blobs), shadows, puddles, stains,
+  manhole or drain covers, road markings, the car's own hood or reflections, or no road in the box.`;
+
 /** Pulls {verdict, reason} out of a model reply. Returns null if it can't. */
 export function parseVerdict(text: string): Checked | null {
   if (!text) return null;
@@ -50,6 +66,7 @@ export interface VerifyOptions {
   model: string;
   baseUrl?: string; // override for tests
   timeoutMs?: number;
+  prompt?: string; // defaults to VERIFY_PROMPT
 }
 
 /** Asks the vision model about one image. Returns null on any failure (stays unverified). */
@@ -74,7 +91,7 @@ export async function verifyImage(
         messages: [{
           role: 'user',
           content: [
-            { type: 'text', text: VERIFY_PROMPT.replace('{BOX}', box) },
+            { type: 'text', text: (opts.prompt ?? VERIFY_PROMPT).replace('{BOX}', box) },
             { type: 'image_url', image_url: { url: imageUrl } },
           ],
         }],

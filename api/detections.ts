@@ -12,13 +12,13 @@
 //   `unverified` detections that have a real image; store its verdict and re-match
 //   (so a confirmed live sighting can create a pin / turn one red). Off if
 //   OPENROUTER_API_KEY / OPENROUTER_MODEL are unset or VERIFY_ON_SERVER=0.
-// POST /api/detections?verify=only  body: { checks: [{ image_url, bbox }] } (≤ 30, our R2 images)
+// POST /api/detections?verify=only  body: { checks: [{ image_url, bbox }], prompt?: "live"|"dashcam" } (≤ 30, our R2 images)
 //   → { ok, model, results: [{ verdict, reason } | null] }. Vision check only; writes nothing.
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import { json, preflight } from './_lib/http';
 import { waitUntil } from '@vercel/functions';
 import { parseDetectionsBody, type Detection } from './_lib/detection';
-import { verifyImage } from './_lib/verify';
+import { verifyImage, VERIFY_PROMPT_DASHCAM } from './_lib/verify';
 
 const MATCH_M = 50;
 const VERIFY_MAX = 10; // vision checks per request
@@ -246,7 +246,8 @@ const VERIFY_ONLY_MAX = 30;
 
 /** ?verify=only — run the vision check on our own R2 images and return the verdicts.
  *  Writes nothing (no detection, no pin). For measuring the check on labelled test frames.
- *  body: { checks: [{ image_url, bbox: [x, y, w, h] | null }] }, at most VERIFY_ONLY_MAX. */
+ *  body: { checks: [{ image_url, bbox: [x, y, w, h] | null }], prompt?: "live" | "dashcam" },
+ *  at most VERIFY_ONLY_MAX checks. "dashcam" = experimental VERIFY_PROMPT_DASHCAM (test only). */
 async function verifyOnly(body: unknown): Promise<Response> {
   if (!verifyOn()) return json({ ok: false, error: 'vision check is off on this deployment' }, 503);
   const checks = (body as any)?.checks;
@@ -259,10 +260,14 @@ async function verifyOnly(body: unknown): Promise<Response> {
     if (typeof c?.image_url !== 'string' || !process.env.R2_PUBLIC_URL || !c.image_url.startsWith(prefix) || !okBox)
       return json({ ok: false, error: 'each check needs an image_url on our R2 bucket and bbox [x,y,w,h] or null' }, 400);
   }
+  const promptName = (body as any)?.prompt ?? 'live';
+  if (promptName !== 'live' && promptName !== 'dashcam')
+    return json({ ok: false, error: 'prompt must be "live" or "dashcam"' }, 400);
   const opts = {
     apiKey: process.env.OPENROUTER_API_KEY!,
     model: process.env.OPENROUTER_MODEL!,
     baseUrl: process.env.OPENROUTER_BASE_URL || undefined,
+    prompt: promptName === 'dashcam' ? VERIFY_PROMPT_DASHCAM : undefined,
   };
   const results: (Awaited<ReturnType<typeof verifyImage>>)[] = new Array(checks.length).fill(null);
   let next = 0;
@@ -272,7 +277,7 @@ async function verifyOnly(body: unknown): Promise<Response> {
     }
   }
   await Promise.all(Array.from({ length: VERIFY_PARALLEL }, worker));
-  return json({ ok: true, model: opts.model, results });
+  return json({ ok: true, model: opts.model, prompt: promptName, results });
 }
 
 export function OPTIONS(): Response {
