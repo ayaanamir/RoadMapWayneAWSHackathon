@@ -18,6 +18,7 @@
 import { Detector, EngineFailed, ModelMissing } from "./detector.js";
 import { Reporter } from "./reporter.js";
 import { DriveRecorder, download } from "./recorder.js";
+import { DriveLog } from "./drivelog.js";
 import {
   BACKEND_FROM_URL, REMEMBERED_BACKEND, rememberBackend, DRY_RUN, REC_AUTO, DETECT,
   MODELS, MODEL_KEY, MODEL_FROM_URL, modelUrl, rememberModel,
@@ -52,7 +53,12 @@ const filesList = document.getElementById("files-list");
 
 const detector = new Detector();
 const drive = new DriveRecorder(showDriveState);
-const reporter = new Reporter(showReporterState, (pos) => drive.addFix(pos));
+const driveLog = new DriveLog();
+const reporter = new Reporter(
+  showReporterState,
+  (pos) => { drive.addFix(pos); driveLog.addFix(pos); },
+  (detection, verdict) => { driveLog.addSighting(detection, verdict); showReportLink(); },
+);
 // The camera picture. The canvas "view" sits on top of it and only has the boxes.
 const video = document.getElementById("camera");
 video.playsInline = true; // needed on iPhone, or the video opens full screen
@@ -100,6 +106,8 @@ async function start() {
   // The camera works: show it now, and load the model on top of it.
   // Ask for location now too, while we are still close to the tap.
   reporter.startGps();
+  driveLog.start();
+  showReportLink();
 
   startScreen.hidden = true;
   if (REC_AUTO) drive.start(video.srcObject);
@@ -337,6 +345,16 @@ function modelInfo() {
 }
 
 // Update the GPS / sent lines in the stats box.
+// "Drive report" link: on the start screen when there is a log, and in the status box.
+function showReportLink() {
+  const n = driveLog.count;
+  for (const el of document.querySelectorAll(".report-link")) {
+    el.hidden = !driveLog.log;
+    el.textContent = n ? `Drive report (${n} sighting${n === 1 ? "" : "s"})` : "Drive report";
+  }
+}
+showReportLink();
+
 function showReporterState({ gps, gpsTone, sent, message, messageTone }) {
   stats.gps.textContent = gps;
   stats.gps.dataset.tone = gpsTone;
