@@ -23,11 +23,26 @@ function pinSvg(state, px, cls = '') {
   return `<svg class="${cls}" viewBox="0 0 ${pin.size} ${pin.size}" width="${px}" height="${px}" aria-hidden="true">${pin.svg}</svg>`;
 }
 
-function pinIcon(state, selected) {
+// Road owner. State routes (MDOT) get a small white diamond, like the Michigan route
+// signs; city streets stay plain. Uses the API's `owner` (contract v5), or works it out
+// from the address with agency.js when the data has none (sample file, older API).
+const AGENCY = { city: 'City of Detroit', state: 'MDOT' };
+function ownerOf(p) {
+  if (p.owner) return p.owner;
+  const o = roadOwner(p.address);
+  return { key: o.key, short: o.agency.short, via: o.agency.via, route: o.route, reason: o.reason };
+}
+const diamond = (px = 10) => `<svg class="diamond" viewBox="0 0 10 10" width="${px}" height="${px}" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="#fff" stroke="#0f0f10" stroke-width="1.2"/></svg>`;
+const ownerTag = (o) => o.key === 'state'
+  ? `<span class="agency-tag state">${diamond()}MDOT${o.route ? ` ${esc(o.route)}` : ''}</span>`
+  : '';
+
+function pinIcon(state, selected, owner) {
   const pin = PIN[state] || PIN.unknown;
+  const mdot = owner?.key === 'state';
   return L.divIcon({
-    className: `pin pin-${state}${selected ? ' selected' : ''}`,
-    html: pinSvg(state, pin.size),
+    className: `pin pin-${state}${selected ? ' selected' : ''}${mdot ? ' mdot' : ''}`,
+    html: pinSvg(state, pin.size) + (mdot ? diamond(pin.size < 20 ? 10 : 12) : ''),
     iconSize: [pin.size, pin.size],
     iconAnchor: [pin.size / 2, pin.size / 2],
   });
@@ -100,18 +115,21 @@ function draw() {
   // Important pins drawn last so they sit on top.
   for (const p of [...potholes].sort((a, b) => order(a) - order(b))) {
     seen.add(p.pothole_id);
-    const look = `${p.state}|${p.pothole_id === selectedId}`;
+    const owner = ownerOf(p);
+    const look = `${p.state}|${p.pothole_id === selectedId}|${owner.key}`;
     let m = markers.get(p.pothole_id);
     if (!m) {
-      m = L.marker([p.lat, p.lon], { icon: pinIcon(p.state, p.pothole_id === selectedId), keyboard: false }).addTo(layer);
+      m = L.marker([p.lat, p.lon], { icon: pinIcon(p.state, p.pothole_id === selectedId, owner), keyboard: false }).addTo(layer);
       m.on('click', () => select(p.pothole_id));
       m.bindTooltip(() => esc(byId(p.pothole_id)?.address || ''), { direction: 'top', offset: [0, -12] });
       markers.set(p.pothole_id, m);
     } else {
       m.setLatLng([p.lat, p.lon]);
-      if (m.look !== look) m.setIcon(pinIcon(p.state, p.pothole_id === selectedId));
+      if (m.look !== look) m.setIcon(pinIcon(p.state, p.pothole_id === selectedId, owner));
     }
     m.look = look;
+    // Agency filter: pins on the other agency's roads fade back instead of vanishing.
+    m.setOpacity(!agencyFilter || owner.key === agencyFilter ? 1 : 0.2);
     // Important pins on top of the gray ones; the picked pin on top of everything.
     m.setZIndexOffset(p.pothole_id === selectedId ? 1000 : order(p) * 100);
   }
@@ -144,6 +162,8 @@ const LEGEND = [
   ['reported_only', 'Not Checked'],
 ];
 let filter = null; // a state from LEGEND, or null for all spots
+let agencyFilter = null; // 'city' | 'state', or null for every road
+const countAgency = (key) => potholes.filter((p) => ownerOf(p).key === key && (!filter || stateOf(p) === filter)).length;
 
 // ---- Sidebar ----
 // Two views in the same panel:
@@ -215,7 +235,7 @@ function renderList() {
   // Important first: still there, then not reported, then fixed. Within that, the
   // spots reported most often, then the most recent.
   const rows = potholes
-    .filter((p) => !filter || stateOf(p) === filter)
+    .filter((p) => (!filter || stateOf(p) === filter) && (!agencyFilter || ownerOf(p).key === agencyFilter))
     .map((p) => ({ p, f: facts(p) }))
     .sort((a, b) =>
       order(b.p) - order(a.p)
@@ -227,6 +247,11 @@ function renderList() {
     <div class="legend" role="group" aria-label="Pin colors">
       ${LEGEND.map(([state, name]) => `<button type="button" class="chip" data-state="${state}" aria-pressed="${filter === state}">
         ${pinSvg(state, 16, 'dot')}${name}<b>${countState(state)}</b></button>`).join('')}
+    </div>
+    <!-- Who fixes the road: City of Detroit streets or MDOT state routes (white diamond). -->
+    <div class="agencies" role="group" aria-label="Road owner">
+      ${['city', 'state'].map((k) => `<button type="button" class="agency-chip ${k}" data-agency="${k}" aria-pressed="${agencyFilter === k}">
+        ${k === 'state' ? diamond(12) : '<span class="plain"></span>'}${AGENCY[k]}<b>${countAgency(k)}</b></button>`).join('')}
     </div>
     <header class="panel-head">
       <h1 class="panel-title">${filter ? esc(LEGEND.find(([s]) => s === filter)[1]) : 'All spots'}</h1>
@@ -241,7 +266,7 @@ function renderList() {
             <span class="spot-name">${esc(p.address || 'Unnamed spot')}</span>
             <span class="spot-line">${esc(listLine(p, f))}</span>
           </span>
-          ${order(p) > 0 ? `<span class="spot-tag ${esc(p.state)}">${esc(SHORT[p.state])}</span>` : ''}
+          <span class="tags">${ownerTag(ownerOf(p))}${order(p) > 0 ? `<span class="spot-tag ${esc(p.state)}">${esc(SHORT[p.state])}</span>` : ''}</span>
         </button></li>`).join('')}
     </ul></div>`);
 }
@@ -265,7 +290,7 @@ function emptyState(state) {
 
 function renderSpot(p) {
   const f = facts(p);
-  const owner = roadOwner(p.address);
+  const owner = ownerOf(p);
 
   // Headline numbers. "Seen after closing" only when it applies.
   const stats = [
@@ -319,9 +344,10 @@ function renderSpot(p) {
       ${f.dets.length ? `<ol class="rows">${camRows}</ol>` : '<p class="note">Not checked yet</p>'}
     </section>
 
-    <section class="block owner">
+    <section class="block owner ${owner.key}">
       <h2>Who fixes it</h2>
-      <p><b>${esc(owner.agency.short)}</b>, ${esc(owner.kind.toLowerCase())}</p>
+      <p class="owner-name">${owner.key === 'state' ? diamond(14) : '<span class="plain"></span>'}<span><b>${esc(owner.short)}</b>${owner.route ? `, state route ${esc(owner.route)}` : ', city street'}</span></p>
+      <p class="owner-sub">${esc(owner.reason)} Report through ${esc(owner.via)}.</p>
     </section>
 
     <a class="report-link" href="${REPORT_PAGE}?id=${encodeURIComponent(p.pothole_id)}">Evidence report and PDF</a>
@@ -336,6 +362,13 @@ function renderSpot(p) {
 panel.addEventListener('click', (e) => {
   if (e.target.closest('[data-clear]')) {
     filter = null;
+    return renderList();
+  }
+  const agencyChip = e.target.closest('.agency-chip');
+  if (agencyChip) {
+    agencyFilter = agencyFilter === agencyChip.dataset.agency ? null : agencyChip.dataset.agency;
+    panel.scrollTop = 0;
+    draw();
     return renderList();
   }
   const chip = e.target.closest('.chip');

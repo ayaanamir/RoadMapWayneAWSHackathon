@@ -153,7 +153,30 @@ a.row-id:hover { text-decoration-color: var(--text); }
 .rows li.hit .row-id, .rows li.hit .row-main { color: var(--paint); }
 
 .owner p { margin: 0; font-size: 15px; }
-.owner b { font-weight: 500; }
+.owner b { font-weight: 600; }
+.owner .owner-name { display: flex; align-items: center; gap: 8px; font-size: 17px; }
+.owner .owner-sub { margin-top: 4px; color: var(--text-2); font-size: 14px; }
+
+/* Road owner. MDOT (state routes) = white diamond, like the Michigan route signs.
+   City streets = plain gray square. */
+.diamond { flex: none; }
+.plain { flex: none; display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--reported); }
+.pin.mdot { position: relative; }
+.pin.mdot .diamond { position: absolute; top: -5px; right: -6px; filter: drop-shadow(0 0 1px #0f0f10); }
+.agencies { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: -12px 0 24px; }
+.agency-chip {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px dashed var(--line); border-radius: 8px;
+  background: transparent; color: var(--text-2); font: 500 14px var(--sans); text-align: left; cursor: pointer;
+  transition: border-color 120ms var(--ease), background-color 120ms var(--ease);
+}
+.agency-chip b { margin-left: auto; font: 500 14px var(--mono); font-variant-numeric: tabular-nums; color: var(--text); }
+.agency-chip:hover { border-color: rgba(237, 237, 237, 0.3); }
+.agency-chip[aria-pressed="true"] { border-style: solid; border-color: var(--text); background: var(--card); color: var(--text); }
+.agency-chip:focus-visible { outline: 2px solid var(--paint); outline-offset: 2px; }
+.tags { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.agency-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 6px; font: 600 12px var(--mono); white-space: nowrap; }
+.agency-tag.state { background: rgba(255, 255, 255, 0.92); color: #0f0f10; }
+.agency-tag.state .diamond path { stroke: #0f0f10; }
 
 .report-link { display: inline-block; margin: 0 0 16px; padding: 10px 16px; border-radius: 8px; background: var(--text); color: var(--bg-deep); font-weight: 500; text-decoration: none; transition: background-color 120ms var(--ease); }
 .report-link:hover { background: #fff; }
