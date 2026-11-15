@@ -124,3 +124,24 @@ hard-example mining with a current model (false-positive / missed frames duplica
 and road-aware copy-paste of GT pothole crops onto pothole-free frames. Split is by video id (15% val; val gets
 only originals + tiles). Writes `OUT/{images,labels}/{train,val}`, `data.yaml`, `build_report.md`, `samples/`.
 `python3 build_v4_data.py --images DIR --labels DIR --out DIR [--model v3_best.pt] [--seed 0] [--tile 640] [--paste-per-frame 2] [--paste-frames 400] [--conf 0.25]`
+
+## rdd_d40_clean.py (v5, T1)
+Clean D40 (pothole-only) labels + images from the ORIGINAL RDD2022 release — the HF mirror's "pothole"
+class for Japan/India is contaminated (D43/D44/D50 merged in). Reads the Figshare 13 GB zip
+(file 38030910) REMOTELY: the 7 inner per-country zips are STORED, so their central directories and
+members are fetched with batched HTTP range requests (no full download; Figshare rate-limits, so reads
+are 16 MB spans, not per-file). Keeps D40 boxes only. Japan: 10,506 XMLs -> 1,390 imgs / 2,243 boxes;
+India: 7,706 XMLs -> 1,530 imgs / 3,187 boxes. Output: flat YOLO set + `data.yaml`, `samples.png`, `summary.json`.
+`python3 rdd_d40_clean.py --out rdd_d40_clean [--countries Japan India] [--limit N] [--max-per-country N]`
+
+## city_paste.py (v5, T2b)
+Turns human-boxed city pothole photos (Improve Detroit / SeeClickFix, from /label via pull_reviewed) into
+dash-cam training examples: GrabCut/ellipse cut -> perspective squash -> Reinhard colour + blur match ->
+paste small/distant onto road-looking pixels (same road mask as build_v4_data) of EMPTY Detroit train frames.
+`python3 city_paste.py --src-images D --src-labels D --dest-images D --dest-labels D --out DIR [--n-out 600]`
+
+## style_aug.py (v5, T3)
+Footage-style offline augmentation (photometric only, labels copied): November grey, wet/dark road,
+low-sun glare, haze, motion blur, JPEG artefacts. `summary.json` carries recommended Ultralytics
+hyperparams (toned-down hsv/geometry so trainer aug doesn't double up with the offline pass).
+`python3 style_aug.py --pair IMAGES LABELS [--pair I2 L2] --out DIR [--frac 1.0] [--seed 0]`
