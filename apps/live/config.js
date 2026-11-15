@@ -24,7 +24,7 @@ export const MODELS = {
   dashcam: {
     name: "Dashcam model", short: "Dashcam", file: "pothole-dashcam.onnx",
     url: "/apps/live/model/pothole-dashcam.onnx", // swap the file to ship a new model (one PR)
-    conf: 0.30, // v5 with 15% v1 blended into the backbone only (layers 0-10); good 0.2-0.45 (#118)
+    conf: 0.10, // v5 alone; picked on real held-out potholes (RDD Czech/Norway/China) + crack photos (#118)
   },
 };
 
