@@ -17,9 +17,15 @@ export const R2_PUBLIC_URL = "https://pub-9da122d7960d49de90da1a69cb4fe7f9.r2.de
 //   python3 apps/live/tools/upload_model.py <file>.onnx --name pothole-dashcam.onnx
 //   phone:   Muq's first model, trained on close-up photos (#39).
 //   dashcam: trained on dashcam footage, better from a moving car.
+//   url:  if set, load from this site (Vercel serves apps/live/model/*.onnx) instead of R2.
+//   conf: the threshold the Detroit test set picked for this model (?conf= still overrides).
 export const MODELS = {
-  phone: { name: "Phone model", short: "Phone", file: "pothole.onnx" },
-  dashcam: { name: "Dashcam model", short: "Dashcam", file: "pothole-dashcam.onnx" },
+  phone: { name: "Phone model", short: "Phone", file: "pothole.onnx", conf: 0.35 },
+  dashcam: {
+    name: "Dashcam model", short: "Dashcam", file: "pothole-dashcam.onnx",
+    url: "/apps/live/model/pothole-dashcam.onnx", // swap the file to ship a new model (one PR)
+    conf: 0.40,
+  },
 };
 
 // Which model to use. Order of choice:
@@ -36,7 +42,7 @@ export const MODEL_FROM_URL = params.get("model");
 export const MODEL_URL = MODEL_FROM_URL || modelUrl(MODEL_KEY);
 
 export function modelUrl(key) {
-  return `${R2_PUBLIC_URL}/models/${MODELS[key].file}`;
+  return MODELS[key].url || `${R2_PUBLIC_URL}/models/${MODELS[key].file}`;
 }
 
 // Remember a model for this phone (same idea as rememberBackend below).
@@ -81,7 +87,8 @@ function readMemory(key) {
 export const INPUT_SIZE = 640;
 
 // Ignore boxes the model is less sure about than this (0 to 1).
-export const CONFIDENCE_MIN = Number(params.get("conf") || 0.35);
+// Per model (switching models reloads the page), unless ?conf= is given.
+export const CONFIDENCE_MIN = Number(params.get("conf") || MODELS[MODEL_KEY].conf || 0.35);
 
 // When two boxes overlap more than this, keep only the stronger one (0 to 1).
 export const OVERLAP_MAX = 0.45;
