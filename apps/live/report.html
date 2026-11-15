@@ -58,6 +58,14 @@
     .bar { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
     .bar a, .bar button { font: inherit; font-size: 14px; color: var(--ink); background: var(--card); border: 1px solid var(--line);
       border-radius: 8px; padding: 8px 12px; text-decoration: none; cursor: pointer; }
+    .video { margin: 0 0 24px; }
+    .video video { width: 100%; max-height: 60vh; background: #000; border-radius: 10px; border: 1px solid var(--line); display: block; }
+    .video label { display: inline-block; font-size: 14px; color: var(--ink); background: var(--card); border: 1px solid var(--line);
+      border-radius: 8px; padding: 8px 12px; cursor: pointer; margin: 0 0 8px; }
+    .video input { display: none; }
+    .video p { color: var(--mute); font-size: 13px; margin: 6px 0 0; }
+    button.seek { font: inherit; font-size: 13px; color: var(--ink); background: none; border: 1px solid var(--line);
+      border-radius: 99px; padding: 3px 10px; margin-top: 8px; cursor: pointer; }
     .filters { display: flex; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
     .filters button { font: inherit; font-size: 13px; color: var(--mute); background: none; border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; }
     .filters button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
@@ -79,6 +87,12 @@
       <span><i style="border:2px solid var(--prev)"></i>Earlier city report</span>
       <span><svg class="dia" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="#fff" stroke="#0f0f10" stroke-width="1.2"/></svg>On a state route (MDOT)</span>
     </div>
+    <section class="video">
+      <h2>Drive video</h2>
+      <label>Choose video<input type="file" id="video-file" accept="video/*,.mp4,.webm,.mov,.json" multiple></label>
+      <video id="drive-video" controls playsinline preload="metadata" hidden></video>
+      <p id="video-note">Pick the drive's .mp4/.webm from this phone (add its .json for the exact start time).</p>
+    </section>
     <h2>Sightings</h2>
     <div class="filters" id="filters">
       <button type="button" data-f="real" aria-pressed="true">Potholes &amp; patches</button>
