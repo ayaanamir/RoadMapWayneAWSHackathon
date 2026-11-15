@@ -52,6 +52,19 @@
         "null"
       ],
       "format": "date-time"
+    },
+    "owner": {
+      "type": "object",
+      "description": "Who fixes this road and where to report it. Added in contract v5.",
+      "required": ["key", "agency", "short", "via", "route", "reason"],
+      "properties": {
+        "key": { "enum": ["city", "state"] },
+        "agency": { "type": "string" },
+        "short": { "type": "string" },
+        "via": { "type": "string" },
+        "route": { "type": ["string", "null"] },
+        "reason": { "type": "string" }
+      }
     }
   }
 }

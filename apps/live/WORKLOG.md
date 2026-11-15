@@ -245,3 +245,9 @@ Next in this area: #42 (GPS, 1 per second) and #43 (upload + POST). Both wait on
   clips. `?rec=1` auto-starts, `?detect=0` records without the model, `?seg=` for tests.
 - Tested on the laptop with a fake camera and fake GPS, 6 s files: rotation, sidecar
   fields, GPX 1.1, videos play at 1280x720, leftover rescue. Not yet on the iPhone.
+
+## Drive report: who to report it to (branch api/pothole-owner)
+
+- Each pothole/patch card on `/live/report.html` now says "Report to City of Detroit
+  (Improve Detroit)" or "MDOT (road concern form)", from the new `owner` field on
+  `GET /api/potholes` (contract v5). Picked from the street name; state routes go to MDOT.

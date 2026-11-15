@@ -1,5 +1,6 @@
 // GET /api/potholes          → { "potholes": Pothole[] }
 // GET /api/potholes?id=<id>  → Pothole (404 if unknown)
+// Each pothole carries `owner`: who fixes that road and where to report it (_lib/owner.ts).
 // Reads Neon. If DATABASE_URL is missing or the query fails, serves
 // shared/fixtures/potholes.sample.json so the map never goes blank
 // (response header X-Data-Source says which one you got).
@@ -7,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { neon } from '@neondatabase/serverless';
 import { json, preflight } from './_lib/http';
+import { roadOwner } from './_lib/owner';
 
 type Row = Record<string, any>;
 
@@ -64,6 +66,8 @@ export async function GET(request: Request): Promise<Response> {
     potholes = loadFixture();
     if (id) potholes = potholes.filter((p) => p.pothole_id === id);
   }
+
+  potholes = potholes.map((p) => ({ ...p, owner: roadOwner(p.address) }));
 
   const headers = { 'X-Data-Source': source };
   if (id) {

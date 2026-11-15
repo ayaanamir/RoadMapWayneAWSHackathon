@@ -3,7 +3,8 @@
 // In: the drive log the live page kept (drivelog.js, localStorage) and the city's earlier
 // pothole reports (GET /api/potholes). Out: headline numbers, a route map, and one card
 // per sighting with its photo, the vision check verdict, and the nearest earlier city
-// report within NEAR_M (how many reports, when the city closed it).
+// report within NEAR_M (how many reports, when the city closed it), and who to report it
+// to (the pothole's `owner` from the API: City of Detroit or MDOT).
 
 import { API_BASE } from "./config.js";
 import { DriveLog } from "./drivelog.js";
@@ -50,14 +51,20 @@ async function main() {
   const endT = fixes.at(-1)?.[0] ?? log.updated;
   const mins = Math.max(0, Math.round((endT - startT) / 60000));
 
-  // Nearest earlier city report for each sighting.
-  const rows = sightings.map((s) => {
+  // Nearest earlier city report for each sighting, and who owns the road there (taken
+  // from the nearest pothole of any kind, which is usually the one this sighting made).
+  const nearest = (s, list) => {
     let near = null, best = Infinity;
-    for (const p of reported) {
+    for (const p of list) {
       const m = meters(s.lat, s.lon, p.lat, p.lon);
       if (m < best) { best = m; near = p; }
     }
-    return { s, near: best <= NEAR_M ? near : null, m: best };
+    return [best <= NEAR_M ? near : null, best];
+  };
+  const rows = sightings.map((s) => {
+    const [near, m] = nearest(s, reported);
+    const owner = (near || nearest(s, potholes)[0])?.owner || null;
+    return { s, near, m, owner };
   });
 
   // City reports the route went past.
@@ -121,7 +128,7 @@ async function main() {
 }
 
 function card(r) {
-  const { s, near, m } = r;
+  const { s, near, m, owner } = r;
   const img = s.img && s.img.startsWith("http")
     ? `<img src="${esc(s.img)}" alt="Sighting ${r.n}" loading="lazy" data-bbox="${esc((s.bbox || []).join(","))}">`
     : "";
@@ -141,12 +148,16 @@ function card(r) {
   } else {
     prev = `<p class="new">No city report within ${NEAR_M} m.${s.verdict === "pothole" ? " Never reported." : ""}</p>`;
   }
+  const to = owner && s.verdict !== "shadow"
+    ? `<p class="to">Report to <b>${esc(owner.short)}</b>, through ${esc(owner.via)}. <span>${esc(owner.reason)}</span></p>`
+    : "";
   return `<article class="card" id="s${r.n}">
     <div class="ph">${img}</div>
     <div class="body">
       <div class="top"><span class="num">#${r.n}</span><span class="verdict v-${esc(s.verdict)}">${esc(VERDICT[s.verdict] || s.verdict)}</span>
         <span class="meta">${fmtTime(s.t)} · model ${Math.round(s.conf * 100)}%</span></div>
       ${prev}
+      ${to}
     </div>
   </article>`;
 }
