@@ -1,4 +1,4 @@
-// Validates a Detection (shared/CONTRACTS.md v3, shared/schema/detection.schema.json).
+// Validates a Detection (shared/CONTRACTS.md v4, shared/schema/detection.schema.json).
 // Self-contained (no imports) so services/api/tests can run it with plain `node --test`.
 
 export type Verdict = 'pothole' | 'shadow' | 'patch' | 'unverified';
@@ -14,11 +14,14 @@ export interface Detection {
   image_url: string;
   verdict: Verdict;
   verdict_reason: string | null;
+  camera: Camera | null; // v4, optional: which model/camera produced it
 }
+export type Camera = 'phone' | 'dashcam';
 
 export const MAX_BATCH = 500;
 const VERDICTS = ['pothole', 'shadow', 'patch', 'unverified'];
 const SOURCES = ['live', 'drive'];
+const CAMERAS = ['phone', 'dashcam'];
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -42,6 +45,8 @@ export function validateDetection(raw: unknown): Detection | string {
   if (!VERDICTS.includes(d.verdict as string)) return `verdict must be one of ${VERDICTS.join(', ')}`;
   if (d.verdict_reason != null && typeof d.verdict_reason !== 'string')
     return 'verdict_reason must be a string or null';
+  if (d.camera != null && !CAMERAS.includes(d.camera as string))
+    return `camera must be one of ${CAMERAS.join(', ')} or omitted`;
 
   return {
     detection_id: d.detection_id.trim(),
@@ -54,6 +59,7 @@ export function validateDetection(raw: unknown): Detection | string {
     image_url: d.image_url,
     verdict: d.verdict as Verdict,
     verdict_reason: (d.verdict_reason as string | null) ?? null,
+    camera: (d.camera as Camera | null) ?? null,
   };
 }
 

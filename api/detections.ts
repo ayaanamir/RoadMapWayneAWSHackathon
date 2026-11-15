@@ -1,7 +1,7 @@
 // POST /api/detections   body: Detection | { detections: Detection[] }
 //   → { ok: true, pothole_ids: string[], results: [{ detection_id, pothole_id|null }] }
 //
-// Contract v3 (shared/CONTRACTS.md):
+// Contract v4 (shared/CONTRACTS.md):
 // - upsert on detection_id (retries are safe; a re-post can upgrade the verdict)
 // - join the nearest pothole within 50 m
 // - else create a new pothole only if verdict is `pothole`, or it is `unverified` and
@@ -50,16 +50,16 @@ async function ingest(sql: Sql, dets: Detection[]) {
   // 1. Upsert. pothole_id is left alone on conflict so a retry never moves a detection.
   await sql.query(
     `INSERT INTO detections (detection_id, source, lat, lon, captured_at, confidence, bbox,
-                             image_url, verdict, verdict_reason)
-     SELECT detection_id, source, lat, lon, captured_at, confidence, bbox, image_url, verdict, verdict_reason
+                             image_url, verdict, verdict_reason, camera)
+     SELECT detection_id, source, lat, lon, captured_at, confidence, bbox, image_url, verdict, verdict_reason, camera
        FROM jsonb_to_recordset($1::jsonb) AS x(detection_id text, source text, lat float8, lon float8,
             captured_at timestamptz, confidence real, bbox jsonb, image_url text, verdict text,
-            verdict_reason text)
+            verdict_reason text, camera text)
      ON CONFLICT (detection_id) DO UPDATE SET
        source = EXCLUDED.source, lat = EXCLUDED.lat, lon = EXCLUDED.lon,
        captured_at = EXCLUDED.captured_at, confidence = EXCLUDED.confidence, bbox = EXCLUDED.bbox,
        image_url = EXCLUDED.image_url, verdict = EXCLUDED.verdict,
-       verdict_reason = EXCLUDED.verdict_reason`,
+       verdict_reason = EXCLUDED.verdict_reason, camera = coalesce(EXCLUDED.camera, detections.camera)`,
     [JSON.stringify(dets)],
   );
 
@@ -170,7 +170,7 @@ export async function POST(request: Request): Promise<Response> {
     try {
       const fresh = new Set(toCheck.map((d) => d.detection_id));
       const stale = (await sql.query(
-        `SELECT detection_id, image_url, bbox, to_char(captured_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS captured_at
+        `SELECT detection_id, source, camera, image_url, bbox, to_char(captured_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS captured_at
            FROM detections
           WHERE verdict = 'unverified' AND verify_attempts < ${MAX_ATTEMPTS}
             AND created_at < now() - interval '1 minute' AND created_at > now() - interval '2 days'
@@ -202,6 +202,12 @@ export function verifiable(dets: Detection[]): Detection[] {
     .slice(0, VERIFY_MAX);
 }
 
+/** Dash-cam sightings (small, far-away potholes) get the dash-cam wording; close-ups the strict one.
+ *  Measured on held-out real potholes (#118): dash-cam wording keeps 7/18 vs 2/18, passes 5/46 vs 1/46. */
+export function promptFor(d: Pick<Detection, 'source' | 'camera'>): string | undefined {
+  return d.camera === 'dashcam' || d.source === 'drive' ? VERIFY_PROMPT_DASHCAM : undefined;
+}
+
 /** Vision-check each detection, store the verdict (only if still unverified), re-match. */
 export async function verifyAndPlace(sql: Sql, dets: Detection[]) {
   const opts = {
@@ -216,7 +222,7 @@ export async function verifyAndPlace(sql: Sql, dets: Detection[]) {
       try {
         await sql.query(`UPDATE detections SET verify_attempts = verify_attempts + 1 WHERE detection_id = $1`, [d.detection_id]);
       } catch { /* counting attempts is best-effort */ }
-      const checked = await verifyImage(d.image_url, d.bbox, opts);
+      const checked = await verifyImage(d.image_url, d.bbox, { ...opts, prompt: promptFor(d) });
       if (!checked) {
         done.push({ detection_id: d.detection_id, verdict: null });
         continue;

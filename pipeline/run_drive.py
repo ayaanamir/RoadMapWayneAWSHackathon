@@ -2,8 +2,8 @@
 """Offline drive pipeline: recorder files (video segments + .json sidecars + .gpx)
 -> pothole detections -> POST /api/upload + /api/detections (source "drive").
 
-  python pipeline/run_drive.py --drive path/to/drive --model best.onnx --dry-run
-  python pipeline/run_drive.py --drive path/to/drive --model best.onnx          # sends
+  python pipeline/run_drive.py --drive path/to/drive --dry-run      # model + conf default to the live dash-cam model
+  python pipeline/run_drive.py --drive path/to/drive                # sends
 
 Each sent sighting costs ~0.4 cents of server vision check; --max-sightings caps it.
 """
@@ -263,8 +263,9 @@ def http(method, url, data, ctype, tries=5):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--drive", required=True)
-    ap.add_argument("--model", required=True)
-    ap.add_argument("--conf", type=float, default=0.40)
+    # Defaults = the shipped dash-cam model (v5) and its threshold, picked on held-out real potholes (#118).
+    ap.add_argument("--model", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "apps", "live", "model", "pothole-dashcam.onnx"))
+    ap.add_argument("--conf", type=float, default=0.10)
     ap.add_argument("--fps", type=float, default=3)
     ap.add_argument("--api", default="https://wayneawshackathon.vercel.app")
     ap.add_argument("--out")
@@ -311,7 +312,7 @@ def main():
         x1, y1, x2, y2 = h["box"]
         bbox = [round(x1 * scale), round(y1 * scale), round((x2 - x1) * scale), round((y2 - y1) * scale)]
         h.update(id=did, jpg=jpg, bbox=bbox)
-        dets.append({"detection_id": did, "source": "drive", "lat": round(h["lat"], 7),
+        dets.append({"detection_id": did, "source": "drive", "camera": "dashcam", "lat": round(h["lat"], 7),
                      "lon": round(h["lon"], 7), "captured_at": iso(h["t_ms"]),
                      "confidence": round(h["conf"], 3), "bbox": bbox, "image_url": "",
                      "verdict": "unverified", "verdict_reason": None})

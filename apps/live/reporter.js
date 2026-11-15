@@ -4,11 +4,11 @@
 //   #43 Send: shrink the frame to a JPEG, upload it (POST /api/upload), then send
 //       the detection (POST /api/detections) with source "live".
 //
-// Shapes and paths are from shared/CONTRACTS.md (v3). The phone does not judge
+// Shapes and paths are from shared/CONTRACTS.md (v4). The phone does not judge
 // whether it is really a pothole, so every detection goes out as "unverified".
 
 import {
-  API_BASE, SEND_LABELS, DRY_RUN, SEND_EVERY_MS,
+  API_BASE, SEND_LABELS, DRY_RUN, SEND_EVERY_MS, MODEL_KEY,
   GPS_MAX_AGE_MS, GPS_MAX_ERROR_M, UPLOAD_MAX_WIDTH, UPLOAD_JPEG_QUALITY,
 } from "./config.js";
 
@@ -108,6 +108,9 @@ export class Reporter {
       const detection = {
         detection_id: id,
         source: "live",
+        // Contract v4: tells the server which vision check to use. The dash-cam model's
+        // potholes are small and far away, so they get the dash-cam wording.
+        camera: MODEL_KEY === "dashcam" ? "dashcam" : "phone",
         lat: gps.lat,
         lon: gps.lon,
         captured_at: capturedAt,

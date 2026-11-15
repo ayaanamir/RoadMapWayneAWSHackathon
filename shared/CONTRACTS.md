@@ -1,6 +1,8 @@
-# Contracts — version 3
+# Contracts — version 4
 
-> Changelog: v3 — images on Cloudflare R2 (public bucket) instead of Vercel Blob; new
+> Changelog: v4 — Detection gets optional `camera` (`phone` | `dashcam`); dash-cam sightings get a
+> vision check worded for small, far-away potholes. Nothing renamed or removed.
+> v3 — images on Cloudflare R2 (public bucket) instead of Vercel Blob; new
 > pothole state `unreported`; only verified detections create new potholes.
 > v2 — stack moved off AWS to Vercel Functions + Neon Postgres + Vercel Blob +
 > OpenRouter vision. `Detection.image_key` → `image_url` (Blob returns full URLs).
@@ -41,6 +43,7 @@
 | `image_url` | string | public R2 URL returned by `POST /api/upload` |
 | `verdict` | `pothole` \| `shadow` \| `patch` \| `unverified` | vision model result |
 | `verdict_reason` | string \| null | one sentence |
+| `camera` | `phone` \| `dashcam` \| omitted | v4, optional: model/camera that made it. `drive` sightings count as `dashcam` |
 
 ### Pothole (what the map shows)
 `pothole_id`, `lat`, `lon`, `address`, `city_reports[]` (by `created_at`), `detections[]`

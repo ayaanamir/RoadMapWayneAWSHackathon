@@ -56,3 +56,10 @@ test('batch errors name the index; empty and oversized batches rejected', () => 
   assert.match(parseDetectionsBody({ detections: Array(MAX_BATCH + 1).fill(sample) }) as string, /at most/);
   assert.match(parseDetectionsBody([sample]) as string, /object/);
 });
+
+test('camera (v4) is optional, phone|dashcam only', () => {
+  assert.equal((validateDetection(sample) as any).camera, null);
+  assert.equal((validateDetection({ ...sample, camera: 'dashcam' }) as any).camera, 'dashcam');
+  assert.equal((validateDetection({ ...sample, camera: 'phone' }) as any).camera, 'phone');
+  assert.equal(typeof validateDetection({ ...sample, camera: 'drone' }), 'string');
+});
