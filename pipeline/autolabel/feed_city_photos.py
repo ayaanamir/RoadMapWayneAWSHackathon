@@ -71,7 +71,8 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     state_path = os.path.join(a.out, "feed_state.json")
     state = json.load(open(state_path)) if os.path.exists(state_path) else {"done": {}, "no_photo": []}
-    seen = set(state["done"]) | set(state["no_photo"])
+    # done keys are frame ids (crowd_scf-<issue>_0); compare bare issue ids
+    seen = {k[len("crowd_scf-"):-len("_0")] for k in state["done"]} | set(state["no_photo"])
 
     def save():
         json.dump(state, open(state_path + ".tmp", "w")); os.replace(state_path + ".tmp", state_path)
