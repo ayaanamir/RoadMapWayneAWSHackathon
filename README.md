@@ -1,59 +1,77 @@
-# Still There? — BuilderWars 2026
+# Still There?
+
+![Our pothole model on a Detroit street](pitch/media/demo.gif)
 
 **The city closes pothole reports in days. We check whether they actually got fixed.**
 
-Detroit's Improve Detroit reports + drive footage + live phone detection → one map where
-every pothole has a timeline: reported → closed → **still there** or **fixed, confirmed**.
+Still There? takes Detroit's public pothole reports, checks the road with a phone or dash cam,
+and shows each pothole's history on one map: reported, closed, and then still there or fixed.
 
-## Who owns what
+## Live Demo
 
-Fill in your GitHub handle. One owner per area — see `AGENTS.md` for the rules.
+- Map: https://wayneawshackathon.vercel.app/
+- Phone camera page: https://wayneawshackathon.vercel.app/live
+- Repair request: open any pin on the map and choose "Evidence report and PDF"
 
-| Role | Person | GitHub | Areas you write in |
+## How It Works
+
+1. **City data.** We pull pothole reports from Improve Detroit and group reports within 50 m into one pothole.
+2. **Detection.** A small pothole model runs in the browser on a phone or dash cam, so it keeps up with a moving car.
+3. **Second check.** A larger vision model reviews each hit and decides pothole, patch, or shadow, with a one-line reason.
+4. **Map and report.** Confirmed potholes appear on the map, and each one can be turned into a repair request for the road owner.
+
+## Team
+
+| Role | Person | GitHub | Folders |
 |---|---|---|---|
-| Backbone | Ayaan | @ayaanamir | `api/`, `services/api/`, `apps/map/` |
-| Footage | Teammate 1 (stronger in Python) | | `pipeline/` |
-| Live + pitch | Teammate 2 (stronger in web/JS) | | `apps/live/`, `pitch/` |
+| Backend, database, map | Ayaan | [@ayaanamir](https://github.com/ayaanamir) | `api/`, `services/api/`, `apps/map/` |
+| Drive footage and model training | Muq | [@MuqC](https://github.com/MuqC) | `pipeline/` |
+| Phone page and pitch | Ado | [@ado11231](https://github.com/ado11231) | `apps/live/`, `pitch/` |
 
-## Stack
+## Tech Stack
 
-Vercel (pages + Functions, HTTPS) · Neon Postgres · Cloudflare R2 (images) · YOLO11n (detector)
-· OpenRouter (vision verify). No AWS. Details: `shared/CONTRACTS.md`.
+- Pothole model: YOLO11, run in the browser with ONNX Runtime Web
+- Vision check: OpenRouter
+- Hosting and API: Vercel
+- Database: Neon Postgres
+- Images: Cloudflare R2
+- Map: Leaflet
+- City data: Improve Detroit open data
 
-- Map: `https://<deployment>/` · Phone page: `https://<deployment>/live` · API: `https://<deployment>/api/*`
-
-## Layout
+## Project Layout
 
 ```
-api/           Vercel Functions: the REST API                     (Backbone)
-apps/
-  live/        phone page: camera + YOLO in browser + GPS        (Live)
-  map/         map + timeline demo screen                         (Backbone)
-services/
-  api/         schema.sql, city ingest + matching scripts           (Backbone)
-pipeline/      drive footage → detections, vision verify          (Footage)
-pitch/         script, slides, backup video                       (Live)
-shared/        CONTRACTS.md, schemas, fixtures  — LOCKED          (everyone)
-docs/          WORKFLOW.md, REQUESTS.md
+api/            REST API (Vercel Functions)
+apps/live/      phone camera page
+apps/map/       map, repair request, and labeling pages
+services/api/   database schema and city data import
+pipeline/       drive footage processing and model training
+pitch/          pitch script, demo plan, demo video tools
+shared/         data contracts and sample data
+docs/           team workflow and requests
 ```
 
-## Start here
+## Run It Locally
 
-0. **Project board:** `python3 scripts/board.py` (or [all issues](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues)).
-   Claim before you work: `python3 scripts/board.py claim <#> "<you>/<agent>"`.
-   **Agent chat:** [issue #1](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues/1).
-   Read it: `python3 scripts/chat.py read` · post: `python3 scripts/chat.py post "[api] START — …"`
-1. Read `docs/WORKFLOW.md` (2 minutes) — how to run your agent without stepping on others.
-   Milestones: `ROADMAP.md` (overall) and `<your area>/ROADMAP.md` (your checklist).
-2. Read `shared/CONTRACTS.md` — the data shapes every area agrees on.
-3. Copy `.env.example` to `.env` and fill in values (never commit `.env`).
-4. Open your agent **in your own area folder** and point it at that folder's `AGENTS.md`.
+1. Copy `.env.example` to `.env` and fill in the values. Never commit `.env`.
+2. Install packages: `npm install`
+3. Start the site and API: `npx vercel dev`
+4. Open `http://localhost:3000` for the map and `http://localhost:3000/live` for the phone page.
 
-## Checkpoints
+The data shapes every part of the project shares are in `shared/CONTRACTS.md`.
 
-| When | Must be true |
+## Team Workflow
+
+- Tasks live on the [project board](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues). See it with `python3 scripts/board.py`.
+- Claim a task before starting: `python3 scripts/board.py claim <#> "<you>/<agent>"`
+- Team chat is [issue #1](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues/1). Read it with `python3 scripts/chat.py read`.
+- Rules for working in this repo are in `AGENTS.md` and `docs/WORKFLOW.md`.
+
+## Timeline
+
+| When | Goal |
 |---|---|
-| Sat 6:00 PM | Map shows real city reports with timelines (fixtures OK until then) |
-| Sat midnight | At least one drive clip processed onto a pin |
-| Sun 8:00 AM | Feature freeze. Bug fixes + backup demo video only |
-| Sun 11:30 AM | Submitted on Shipyard (hard deadline 12:00) |
+| Sat 6:00 PM | Map shows real city reports with timelines |
+| Sat midnight | First drive clip processed onto a pin |
+| Sun 8:00 AM | Feature freeze, bug fixes and backup video only |
+| Sun 11:30 AM | Submitted on Shipyard (deadline 12:00) |
