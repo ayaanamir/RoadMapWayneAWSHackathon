@@ -6,6 +6,11 @@ Rules: `AGENTS.md` here + at repo root. Progress: `ROADMAP.md`.
 ## Run / deploy
 _Owner fills this in as it's built:_
 - City ingest: `python3 services/api/ingest_city.py` (stdlib only, reads `DATABASE_URL` from env or `.env`; `--dry-run` to preview). Safe to rerun; last run Sat 2:31 PM: 147 reports → 130 potholes.
+- Report check (#133): the city's "Potholes" type also holds sidewalk, curb, debris and bike-lane
+  reports. After each ingest the script calls `POST /api/city-check` (internal), which reads each new
+  report's SeeClickFix text + photo and asks a small model (`OPENROUTER_MODEL`, key stays on Vercel).
+  `not_pothole` reports stay in `city_reports` with `pothole_id = NULL` (not shown). See what was
+  rejected: `curl $API_BASE_URL/api/city-check`. Skip with `--no-check`.
 - Local: `npm install && vercel dev` (needs `DATABASE_URL` in `.env`; without it `/api/potholes` serves the fixture)
 - Deploy: merge to `main` (Vercel auto-deploys)
 - Live URL: https://wayneawshackathon.vercel.app (`/api/health`, `/api/potholes`, `/api/upload`, `/api/detections`)

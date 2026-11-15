@@ -4,6 +4,7 @@
     python3 services/api/ingest_city.py            # last 120 days, our area
     python3 services/api/ingest_city.py --days 365
     python3 services/api/ingest_city.py --dry-run  # fetch + group, write nothing
+    python3 services/api/ingest_city.py --no-check # skip the report check (step 5)
 
 Standard library only (no pip install). Reads DATABASE_URL from the environment or
 the repo's .env, and talks to Neon over its HTTPS SQL endpoint.
@@ -18,6 +19,11 @@ What it does:
    address = newest report's address). photo_url is never overwritten with null.
 4. Recomputes state + last_seen_at for every pothole (rule in shared/CONTRACTS.md).
 
+5. Report check (#133): calls POST $API_BASE_URL/api/city-check until every new report is
+   checked. The city's Potholes type also holds sidewalk, curb, debris and bike-lane reports;
+   the API reads each one's SeeClickFix text + photo and asks a small model (key stays on
+   Vercel). 'not_pothole' reports keep pothole_id = NULL and this script never regroups them.
+
 Safe to rerun any time.
 """
 import argparse
@@ -26,6 +32,7 @@ import math
 import os
 import pathlib
 import sys
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -37,6 +44,7 @@ FEATURESERVER = os.environ.get(
 # Newlab / Corktown / Midtown / Southwest (west, south, east, north). Same box as pitch/stats.
 BOX = (-83.13, 42.30, -83.04, 42.36)
 SAME_SPOT_M = 50
+API_BASE_URL_DEFAULT = "https://wayneawshackathon.vercel.app"
 PAGE = 2000
 
 
@@ -51,6 +59,45 @@ def database_url():
             if line.startswith("DATABASE_URL="):
                 return line.split("=", 1)[1].split("#")[0].strip().strip('"').strip("'")
     sys.exit("DATABASE_URL not set (env var or .env at the repo root)")
+
+
+def env_or_dotenv(name, default=None):
+    if os.environ.get(name):
+        return os.environ[name]
+    env = pathlib.Path(__file__).resolve().parents[2] / ".env"
+    if env.exists():
+        for line in env.read_text().splitlines():
+            if line.startswith(name + "="):
+                v = line.split("=", 1)[1].split("#")[0].strip().strip('"').strip("'")
+                if v:
+                    return v
+    return default
+
+
+def run_city_check():
+    """Step 5: let the API check new reports (it holds the OpenRouter key)."""
+    base = env_or_dotenv("API_BASE_URL", API_BASE_URL_DEFAULT).rstrip("/")
+    last, waits = None, 0
+    while True:
+        req = urllib.request.Request(f"{base}/api/city-check?limit=10", data=b"", method="POST",
+                                     headers={"User-Agent": "still-there-ingest/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                res = json.load(r)
+        except Exception as e:
+            print(f"report check: {base}/api/city-check failed ({e}); run again later")
+            return
+        print(f"report check: {res['checked']} checked, {res['not_pothole']} not a pothole, "
+              f"{res['failed']} failed, {res['remaining']} left")
+        if res.get("busy") and waits < 10:  # SeeClickFix rate limit: back off, then carry on
+            waits += 1
+            print("  SeeClickFix is rate-limiting; waiting 60 s")
+            time.sleep(60)
+            continue
+        if not res["remaining"] or res["remaining"] == last:
+            return
+        last = res["remaining"]
+        time.sleep(5)  # gentle on SeeClickFix
 
 
 # ---------- Neon over HTTPS ----------
@@ -195,6 +242,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--days", type=int, default=120)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--no-check", action="store_true", help="skip the report check (step 5)")
     args = ap.parse_args()
 
     fresh = fetch_city(args.days)
@@ -204,7 +252,7 @@ def main():
     ts = lambda c: f"to_char({c} AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')"
     old = [] if args.dry_run else sql(url, f"""
         SELECT issue_id, address, lat, lon, status, {ts('created_at')} AS created_at,
-               {ts('closed_at')} AS closed_at, issue_url, pothole_id FROM city_reports""")
+               {ts('closed_at')} AS closed_at, issue_url, pothole_id, check_verdict FROM city_reports""")
     for r in old:
         r["lat"], r["lon"] = float(r["lat"]), float(r["lon"])
 
@@ -212,14 +260,16 @@ def main():
     merged = {r["issue_id"]: r for r in old}
     merged.update({r["issue_id"]: {**merged.get(r["issue_id"], {}), **r} for r in fresh})
     reports = list(merged.values())
-    assign = group(reports, {r["issue_id"]: r.get("pothole_id") for r in old})
+    # Reports the check rejected stay stored but join no pothole (not shown on the map).
+    kept = [r for r in reports if r.get("check_verdict") != "not_pothole"]
+    assign = group(kept, {r["issue_id"]: r.get("pothole_id") for r in old})
     for r in reports:
-        r["pothole_id"] = assign[r["issue_id"]]
+        r["pothole_id"] = assign.get(r["issue_id"])
 
     members = {}
-    for r in reports:
+    for r in kept:
         members.setdefault(r["pothole_id"], []).append(r)
-    print(f"grouped into {len(members)} potholes "
+    print(f"{len(kept)} of {len(reports)} reports kept; grouped into {len(members)} potholes "
           f"({sum(len(v) > 1 for v in members.values())} with 2+ reports)")
     if args.dry_run:
         top = sorted(members.items(), key=lambda kv: -len(kv[1]))[:5]
@@ -275,6 +325,9 @@ def main():
     counts = {r["state"]: int(r["n"]) for r in
               sql(url, "SELECT state, count(*) AS n FROM potholes GROUP BY state")}
     print(f"wrote {len(reports)} city_reports, {len(rows)} potholes; states: {counts}")
+
+    if not args.no_check:
+        run_city_check()
 
 
 if __name__ == "__main__":
