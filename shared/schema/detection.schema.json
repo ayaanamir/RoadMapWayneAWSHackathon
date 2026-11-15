@@ -66,6 +66,12 @@
     },
     "image_url": {
       "type": "string"
+    },
+    "camera": {
+      "enum": [
+        "phone",
+        "dashcam"
+      ]
     }
   }
 }

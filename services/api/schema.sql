@@ -199,3 +199,7 @@ CREATE TABLE IF NOT EXISTS label_frames (
 
 -- Added for the vision-check retry: how many times the server tried to check this sighting.
 ALTER TABLE detections ADD COLUMN IF NOT EXISTS verify_attempts integer NOT NULL DEFAULT 0;
+
+-- Contract v4: which model/camera produced a sighting ('phone' close-up or 'dashcam').
+-- Dash-cam sightings get the dash-cam vision prompt. NULL = unknown (older rows).
+ALTER TABLE detections ADD COLUMN IF NOT EXISTS camera text CHECK (camera IN ('phone','dashcam'));
