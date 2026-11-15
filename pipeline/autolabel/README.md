@@ -117,3 +117,10 @@ Keeps /label fed with real Detroit pothole photos from Improve Detroit / SeeClic
 reviewers run low (`--low-water`, default 60 waiting) — so the teacher only labels what people will
 actually review. Hard cost cap `--max-photos` (default 400). Photos go to the train split only.
 `python3 feed_city_photos.py --api https://wayneawshackathon.vercel.app --out DIR`
+
+## build_v4_data.py
+Squeezes more out of the labelled Detroit train frames: road-band full-res tiles (y 35-95%, >=15% overlap),
+hard-example mining with a current model (false-positive / missed frames duplicated x3 with their tiles),
+and road-aware copy-paste of GT pothole crops onto pothole-free frames. Split is by video id (15% val; val gets
+only originals + tiles). Writes `OUT/{images,labels}/{train,val}`, `data.yaml`, `build_report.md`, `samples/`.
+`python3 build_v4_data.py --images DIR --labels DIR --out DIR [--model v3_best.pt] [--seed 0] [--tile 640] [--paste-per-frame 2] [--paste-frames 400] [--conf 0.25]`
