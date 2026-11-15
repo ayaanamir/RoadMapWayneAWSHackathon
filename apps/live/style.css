@@ -349,3 +349,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 /* Plain text button on the start screen (save the last drive's GPS track). */
 .link { background: none; border: 0; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
 .link[hidden] { display: none; }
+
+/* Drive report link (drivelog.js): start screen and status box. */
+.report-link { display: block; margin-top: 10px; color: var(--text-2); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.report-link[hidden] { display: none; }

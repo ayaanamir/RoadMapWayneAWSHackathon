@@ -15,9 +15,12 @@ import {
 export class Reporter {
   // onChange(state) is called whenever something the page shows has changed.
   // onPosition(pos) gets every GPS reading (the drive recorder logs them).
-  constructor(onChange = () => {}, onPosition = () => {}) {
+  // onSighting(detection, verdict) gets every sent detection with the vision check's
+  // verdict, for the drive report (drivelog.js).
+  constructor(onChange = () => {}, onPosition = () => {}, onSighting = () => {}) {
     this.onChange = onChange;
     this.onPosition = onPosition;
+    this.onSighting = onSighting;
     this.position = null;      // latest GPS reading
     this.gpsProblem = "";      // why we have no GPS, if we do not
     this.sending = false;      // a send is in progress
@@ -125,12 +128,16 @@ export class Reporter {
         console.info("[live] dry run, would send:", detection);
         this.say(`Would send, ${Math.round(box.score * 100)}%`, "");
       } else {
+        // ?verify=wait: the API answers after the vision check (a few seconds), so the
+        // phone knows the verdict for the drive report. Sends stay one at a time, which
+        // also keeps the checks (and their cost) to one every few seconds.
         const result = await postDetection(detection);
         this.sentCount += 1;
-        // The API answers right away. If it is still checking the photo with the vision
-        // model (result.verifying), the pin can show up a few seconds later.
-        const pin = result.pothole_ids?.[0];
-        this.say(pin ? "On the map" : result.verifying ? "Sent, checking" : "Sent", "good");
+        const verdict = result.verified?.[0]?.verdict || "unverified";
+        this.onSighting(detection, verdict);
+        const said = { pothole: ["Pothole, on the map", "good"], patch: ["Checked: patched", "quiet"],
+          shadow: ["Checked: not a pothole", "quiet"] }[verdict] || ["Sent", "good"];
+        this.say(...said);
       }
     } catch (err) {
       console.error("[live] send failed:", err);
@@ -203,7 +210,7 @@ async function uploadFrame(blob, name) {
 // POST /api/detections: one Detection in, { ok, pothole_ids } out.
 // The API ignores repeats of the same detection_id, so one retry is safe.
 async function postDetection(detection) {
-  const send = () => fetch(`${API_BASE}/api/detections`, {
+  const send = () => fetch(`${API_BASE}/api/detections?verify=wait`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(detection),
