@@ -12,6 +12,8 @@
 //   `unverified` detections that have a real image; store its verdict and re-match
 //   (so a confirmed live sighting can create a pin / turn one red). Off if
 //   OPENROUTER_API_KEY / OPENROUTER_MODEL are unset or VERIFY_ON_SERVER=0.
+// POST /api/detections?verify=only  body: { checks: [{ image_url, bbox }] } (≤ 30, our R2 images)
+//   → { ok, model, results: [{ verdict, reason } | null] }. Vision check only; writes nothing.
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import { json, preflight } from './_lib/http';
 import { waitUntil } from '@vercel/functions';
@@ -148,6 +150,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return json({ ok: false, error: 'body must be JSON' }, 400);
   }
+  if (new URL(request.url).searchParams.get('verify') === 'only') return verifyOnly(body);
   const dets = parseDetectionsBody(body);
   if (typeof dets === 'string') return json({ ok: false, error: dets }, 400);
 
@@ -237,6 +240,39 @@ export async function verifyAndPlace(sql: Sql, dets: Detection[]) {
   }
   await Promise.all(Array.from({ length: VERIFY_PARALLEL }, worker));
   return done;
+}
+
+const VERIFY_ONLY_MAX = 30;
+
+/** ?verify=only — run the vision check on our own R2 images and return the verdicts.
+ *  Writes nothing (no detection, no pin). For measuring the check on labelled test frames.
+ *  body: { checks: [{ image_url, bbox: [x, y, w, h] | null }] }, at most VERIFY_ONLY_MAX. */
+async function verifyOnly(body: unknown): Promise<Response> {
+  if (!verifyOn()) return json({ ok: false, error: 'vision check is off on this deployment' }, 503);
+  const checks = (body as any)?.checks;
+  if (!Array.isArray(checks) || !checks.length || checks.length > VERIFY_ONLY_MAX)
+    return json({ ok: false, error: `checks must be an array of 1-${VERIFY_ONLY_MAX}` }, 400);
+  const prefix = `${(process.env.R2_PUBLIC_URL ?? '').replace(/\/+$/, '')}/`;
+  for (const c of checks) {
+    const okBox = c?.bbox === null || (Array.isArray(c?.bbox) && c.bbox.length === 4 &&
+      c.bbox.every((v: unknown) => typeof v === 'number' && Number.isFinite(v)));
+    if (typeof c?.image_url !== 'string' || !process.env.R2_PUBLIC_URL || !c.image_url.startsWith(prefix) || !okBox)
+      return json({ ok: false, error: 'each check needs an image_url on our R2 bucket and bbox [x,y,w,h] or null' }, 400);
+  }
+  const opts = {
+    apiKey: process.env.OPENROUTER_API_KEY!,
+    model: process.env.OPENROUTER_MODEL!,
+    baseUrl: process.env.OPENROUTER_BASE_URL || undefined,
+  };
+  const results: (Awaited<ReturnType<typeof verifyImage>>)[] = new Array(checks.length).fill(null);
+  let next = 0;
+  async function worker() {
+    for (let i = next++; i < checks.length; i = next++) {
+      results[i] = await verifyImage(checks[i].image_url, checks[i].bbox, opts);
+    }
+  }
+  await Promise.all(Array.from({ length: VERIFY_PARALLEL }, worker));
+  return json({ ok: true, model: opts.model, results });
 }
 
 export function OPTIONS(): Response {
