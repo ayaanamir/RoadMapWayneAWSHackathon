@@ -2,10 +2,9 @@
 // Built only from our data and the city's public records; no AI-written text except
 // the vision check's one-line reason for each photo.
 //
-// Page 1: what the agency acts on (reference, to whom and why, location, the request,
-//         key dates, photos).
-// Page 2: the supporting record (city reports, our sightings, how we found it, sources,
-//         QR code to the live page).
+// Page 1: a dated letter to the road owner: to, re, three numbered paragraphs (the city's
+//         record, what our camera saw, the request), exhibit list, sign-off.
+// Page 2: the exhibits: A photos, B the city's requests and our camera record.
 // On screen the sheet looks like the paper it prints as. The "Send to the road owner"
 // panel under it is screen only, and its Send button is a demo: nothing is sent.
 
@@ -62,7 +61,7 @@ function request(p, f) {
     const days = daysBetween(f.lastClose, f.latestHit.captured_at);
     return {
       title: 'Pothole repair request',
-      ask: `Please reopen ${f.closed.length > 1 ? 'issues' : 'issue'} ${issues} and repair the pothole at ${where}.`,
+      ask: `Please reopen service ${f.closed.length > 1 ? 'requests' : 'request'} ${issues} and repair the pothole at ${where}.`,
       basis: `${f.closed.length > 1 ? 'All were' : 'It was'} marked closed, most recently on ${date(f.lastClose)}, but our camera recorded the pothole still there on ${date(f.latestHit.captured_at)}, ${plural(days, 'day')} later.`,
     };
   }
@@ -101,37 +100,6 @@ function liveUrl(p) {
   return `${location.origin}/report?id=${encodeURIComponent(p.pothole_id)}`;
 }
 
-// ---- Small map: OpenStreetMap tiles around the spot, pin in the middle ----
-
-function mapTiles(lat, lon, w = 300, h = 170, z = 17) {
-  const scale = 256 * 2 ** z;
-  const x = ((lon + 180) / 360) * scale;
-  const rad = (lat * Math.PI) / 180;
-  const y = ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * scale;
-  const left = x - w / 2;
-  const top = y - h / 2;
-  const tiles = [];
-  for (let tx = Math.floor(left / 256); tx <= Math.floor((left + w) / 256); tx++) {
-    for (let ty = Math.floor(top / 256); ty <= Math.floor((top + h) / 256); ty++) {
-      tiles.push(`<img src="https://tile.openstreetmap.org/${z}/${tx}/${ty}.png" alt="" style="left:${Math.round(tx * 256 - left)}px;top:${Math.round(ty * 256 - top)}px">`);
-    }
-  }
-  return `<div class="map" style="width:${w}px;height:${h}px" role="img" aria-label="Map of the location">
-    ${tiles.join('')}
-    <span class="map-pin" style="left:${w / 2}px;top:${h / 2}px"></span>
-    <span class="map-credit">© OpenStreetMap contributors</span>
-  </div>`;
-}
-
-// QR code to the live evidence page (qrcode-generator from cdnjs). Empty if it did not load.
-function qrSvg(text) {
-  if (typeof qrcode !== 'function') return '';
-  const qr = qrcode(0, 'M');
-  qr.addData(text);
-  qr.make();
-  return qr.createSvgTag({ cellSize: 3, margin: 0, scalable: true });
-}
-
 function render(p) {
   const f = facts(p);
   const ref = reference(p.pothole_id);
@@ -149,16 +117,35 @@ function render(p) {
     ? `<img src="${esc(src)}" alt="${esc(alt)}" onerror="this.outerHTML='<div class=none>Photo not available</div>'">`
     : `<div class="none">${none}</div>`;
   const issue = (r) => `<a href="${esc(r.issue_url)}" target="_blank" rel="noopener">#${esc(r.issue_id)}</a>`;
-  const sinceClose = f.lastClose && f.latestHit && p.state === 'still_there' ? daysBetween(f.lastClose, f.latestHit.captured_at) : null;
+  const issues = list(f.reports.map(issue));
+  const camera = (d) => d.source === 'live' ? 'phone camera' : 'dash camera';
+  const where = esc(p.address || 'this location');
+  const longToday = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', ...tz });
 
-  // Key dates, only the ones we have.
-  const keyFacts = [
-    f.reports.length && ['First reported', date(f.reports[0].created_at)],
-    f.reports.length && ['City reports', `${f.reports.length}, ${f.closed.length} closed`],
-    f.lastClose && ['Last closed', date(f.lastClose)],
-    f.latestHit && [p.state === 'still_there' ? 'Seen still there' : 'Seen by our camera', date(f.latestHit.captured_at)],
-    sinceClose != null && ['Days after closing', String(sinceClose)],
-  ].filter(Boolean);
+  // The letter body: what the city's record says, what we saw, what we ask.
+  const paras = [];
+  if (f.reports.length) {
+    const first = f.reports[0].created_at;
+    const last = f.reports.at(-1).created_at;
+    const span = date(first) === date(last) ? `on ${esc(date(first))}` : `between ${esc(date(first))} and ${esc(date(last))}`;
+    const closedPart = !f.closed.length ? 'None has been marked closed.'
+      : f.closed.length === f.reports.length
+        ? `${f.closed.length > 1 ? 'Each was' : 'It was'} marked closed, most recently on ${esc(date(f.lastClose))}.`
+        : `${f.closed.length} of them ${f.closed.length > 1 ? 'were' : 'was'} marked closed, most recently on ${esc(date(f.lastClose))}.`;
+    paras.push(`The City received ${plural(f.reports.length, 'service request')} (${issues}) for a pothole at ${where} ${span}. ${closedPart} See Exhibit B.`);
+  } else {
+    paras.push(`We found no city service request for a pothole at ${where}.`);
+  }
+  if (f.latestHit) {
+    const after = f.lastClose && f.latestHit.captured_at > f.lastClose
+      ? `, ${plural(daysBetween(f.lastClose, f.latestHit.captured_at), 'day')} after the last closure` : '';
+    paras.push(`On ${esc(when(f.latestHit.captured_at))}, our ${camera(f.latestHit)} recorded a pothole at this location${after}. See Exhibit A.`);
+  } else if (ours) {
+    paras.push(`Our ${camera(ours)} passed this location on ${esc(date(ours.captured_at))}. Result: ${esc((VERDICT[ours.verdict] || ours.verdict).toLowerCase())}. See Exhibit A.`);
+  } else {
+    paras.push('Our cameras have not yet passed this location.');
+  }
+  paras.push(`<strong>${esc(req.ask)}</strong>`);
 
   const cityRows = f.reports.map((r) => `<tr>
       <td>${issue(r)}</td>
@@ -167,126 +154,91 @@ function render(p) {
       <td class="num r">${r.closed_at ? daysBetween(r.created_at, r.closed_at) : '–'}</td>
       <td>${esc(r.status || '')}</td>
     </tr>`).join('');
-  const ourRows = f.dets.map((d) => `<tr class="${d.verdict === 'pothole' ? 'hit' : ''}">
+  const ourRows = f.dets.map((d) => `<tr>
       <td class="num">${esc(when(d.captured_at))}</td>
       <td>${d.source === 'live' ? 'Phone' : 'Dash camera'}</td>
       <td>${esc(VERDICT[d.verdict] || d.verdict)}</td>
       <td class="num r">${Math.round(d.confidence * 100)}%</td>
-      <td>${esc(d.verdict_reason || '')}${d.image_url ? ` <a href="${esc(d.image_url)}" target="_blank" rel="noopener">Photo</a>` : ''}</td>
+      <td>${esc(d.verdict_reason || '')}</td>
     </tr>`).join('');
 
-  // Reference, address and page number at the bottom of every printed page.
+  // Reference and page number at the bottom of every printed page.
   document.getElementById('page-foot')?.remove();
   const foot = document.createElement('style');
   foot.id = 'page-foot';
   const cssText = (t) => `"${String(t).replace(/["\\]/g, '')}"`;
   foot.textContent = `@page {
-    @bottom-left { content: ${cssText(`${ref} · ${p.address || ''}`)}; font: 8pt "Geist Mono", monospace; color: #6b6b70; }
-    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt "Geist Mono", monospace; color: #6b6b70; }
+    @bottom-left { content: ${cssText(`Ref. ${ref}`)}; font: 9pt "EB Garamond", Garamond, serif; color: #6b6b70; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 9pt "EB Garamond", Garamond, serif; color: #6b6b70; }
   }`;
   document.head.append(foot);
 
   sheet.innerHTML = `
-    <!-- ===== Page 1: the request ===== -->
-    <header class="doc-head">
-      <div class="doc-from">
-        <p class="doc-brand">Still There</p>
-        <p class="doc-sub">Road condition evidence, Detroit</p>
-      </div>
-      <table class="doc-ref">
-        <tr><th>Reference</th><td>${ref}</td></tr>
-        <tr><th>Prepared</th><td>${esc(today)}</td></tr>
-        <tr><th>Status</th><td>${esc(LABEL[p.state] || p.state)}</td></tr>
-      </table>
+    <!-- ===== Page 1: the letter ===== -->
+    <header class="letterhead">
+      <p class="brand">Still There</p>
+      <p class="brand-sub">Road condition evidence · Detroit, Michigan</p>
     </header>
 
-    <h1>${esc(req.title)}</h1>
-    <p class="doc-for">${esc(p.address || 'Unnamed location')}</p>
+    <div class="dateline">
+      <span>${esc(longToday)}</span>
+      <span>Ref. ${ref}</span>
+    </div>
 
-    <section class="block where">
-      <h2><span>1</span>Location and jurisdiction</h2>
-      <div class="where-grid">
-        <table class="fields">
-          <tr><th>Addressed to</th><td>${esc(owner.agency.name)}</td></tr>
-          <tr><th>Jurisdiction</th><td>${esc(owner.reason)}</td></tr>
-          <tr><th>Submit through</th><td>${esc(owner.agency.via)}</td></tr>
-          <tr><th>Address</th><td>${esc(p.address || '–')}</td></tr>
-          <tr><th>Coordinates</th><td class="num">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}
-            <a class="no-print-link" href="https://www.google.com/maps?q=${p.lat},${p.lon}" target="_blank" rel="noopener">Open in Maps</a></td></tr>
-        </table>
-        ${mapTiles(p.lat, p.lon)}
-      </div>
-    </section>
+    <table class="address">
+      <tr><th>To</th><td>${esc(owner.agency.name)}<br><span class="muted">Submitted through ${esc(owner.agency.via)}</span></td></tr>
+      <tr><th>Re</th><td><strong>${esc(req.title)}, ${where}</strong><br>
+        <span class="muted">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}${f.reports.length ? ` · Service ${f.reports.length > 1 ? 'requests' : 'request'} ${f.reports.map((r) => `#${esc(r.issue_id)}`).join(', ')}` : ''}</span></td></tr>
+    </table>
 
-    <section class="block request">
-      <h2><span>2</span>Request</h2>
-      <p class="ask">${esc(req.ask)}</p>
-      <p class="basis">${esc(req.basis)}</p>
-    </section>
+    <ol class="paras">${paras.map((t) => `<li>${t}</li>`).join('')}</ol>
 
-    ${keyFacts.length ? `<section class="block">
-      <h2><span>3</span>Key dates</h2>
-      <dl class="key">${keyFacts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
-    </section>` : ''}
+    <div class="exhibits">
+      <p class="label">Exhibits</p>
+      <p>A. Photographs of the location</p>
+      <p>B. City service requests and our camera record</p>
+    </div>
 
-    <section class="block">
-      <h2><span>4</span>Photo evidence</h2>
-      <div class="photos">
-        <figure>
-          ${img(ours?.image_url, 'Our camera photo', 'Not seen by our cameras yet')}
-          <figcaption>${ours
-            ? `<b>A. Our camera, ${esc(when(ours.captured_at))}</b>
-               <span>${ours.source === 'live' ? 'Phone' : 'Dash camera'}, result: ${esc(VERDICT[ours.verdict] || ours.verdict)}${ours.verdict_reason ? `. ${esc(ours.verdict_reason)}` : ''}</span>`
-            : '<b>A. Our camera</b>'}</figcaption>
-        </figure>
-        <figure>
-          ${cityReport?.photo_url ? img(cityReport.photo_url, 'City report photo', '')
-            : `<div class="none">${cityReport ? 'No photo on the city report' : 'Never reported to the city'}</div>`}
-          <figcaption>${cityReport
-            ? `<b>B. City report ${issue(cityReport)}</b><span>Filed ${esc(date(cityReport.created_at))}${cityReport.closed_at ? `, closed ${esc(date(cityReport.closed_at))}` : ''}</span>`
-            : '<b>B. City report</b>'}</figcaption>
-        </figure>
-      </div>
-    </section>
+    <div class="signoff">
+      <p>Respectfully submitted,</p>
+      <p class="sig">Still There</p>
+      <p class="muted">Prepared ${esc(longToday)} from public city records and our camera data. Figures are not edited by hand.</p>
+    </div>
 
-    <!-- ===== Page 2: the supporting record ===== -->
+    <!-- ===== Page 2: exhibits ===== -->
     <section class="record">
-      <section class="block">
-        <h2><span>5</span>City service requests</h2>
-        ${f.reports.length ? `<table class="data">
-          <thead><tr><th>Issue</th><th>Filed</th><th>Closed</th><th class="r">Days open</th><th>Status</th></tr></thead>
-          <tbody>${cityRows}</tbody>
-        </table>` : '<p class="none-line">None. This location has not been reported to the city.</p>'}
+      <section class="exhibit">
+        <h2>Exhibit A. Photographs</h2>
+        <div class="photos">
+          <figure>
+            ${img(ours?.image_url, 'Our camera photo', 'Not yet photographed by our cameras')}
+            <figcaption>A-1. Our ${ours ? `${camera(ours)}, ${esc(when(ours.captured_at))}` : 'camera'}${ours?.verdict_reason ? `<span>${esc(ours.verdict_reason)}</span>` : ''}</figcaption>
+          </figure>
+          <figure>
+            ${cityReport?.photo_url ? img(cityReport.photo_url, 'City report photo', '')
+              : `<div class="none">${cityReport ? 'No photo attached to the city request' : 'Never reported to the city'}</div>`}
+            <figcaption>A-2. City request ${cityReport ? `#${esc(cityReport.issue_id)}, filed ${esc(date(cityReport.created_at))}` : ''}</figcaption>
+          </figure>
+        </div>
       </section>
 
-      <section class="block">
-        <h2><span>6</span>Our sightings</h2>
+      <section class="exhibit">
+        <h2>Exhibit B. Record</h2>
+        <h3>B-1. City service requests</h3>
+        ${f.reports.length ? `<table class="data">
+          <thead><tr><th>Request</th><th>Filed</th><th>Closed</th><th class="r">Days open</th><th>Status</th></tr></thead>
+          <tbody>${cityRows}</tbody>
+        </table>` : '<p class="none-line">None on record.</p>'}
+        <h3>B-2. Our camera record</h3>
         ${f.dets.length ? `<table class="data">
           <thead><tr><th>Date and time</th><th>Camera</th><th>Result</th><th class="r">Confidence</th><th>Note</th></tr></thead>
           <tbody>${ourRows}</tbody>
         </table>` : '<p class="none-line">None yet.</p>'}
+        <p class="note">Method: a camera in a moving car records the road with time and GPS position. A detection
+        model flags possible potholes and a vision model confirms each one as pothole, patch or shadow. Sightings
+        are matched to city requests within 50 m. City data: Improve Detroit public records.
+        Live record: <a href="${esc(liveUrl(p))}">${esc(liveUrl(p).replace(/^https?:\/\//, ''))}</a></p>
       </section>
-
-      <section class="block about">
-        <div>
-          <h2><span>7</span>Method</h2>
-          <p>A phone or dash camera in a moving car records the road. A detection model marks
-          possible potholes and saves each photo with its time and GPS position. A second check
-          by an AI vision model labels each photo as pothole, patch or shadow; only "pothole"
-          counts as a sighting. Sightings are matched to city reports within 50 m.</p>
-          <h2><span>8</span>Data sources</h2>
-          <p>City reports: Improve Detroit (SeeClickFix), public records. Report locations are
-          geocoded by the city and can be 10 to 50 m off. Photos and sightings: Still There
-          cameras. Road owner: determined from the street name.</p>
-        </div>
-        <figure class="qr">
-          ${qrSvg(liveUrl(p))}
-          <figcaption>Scan for the live evidence page</figcaption>
-        </figure>
-      </section>
-
-      <p class="attest">Prepared automatically by Still There on ${esc(today)} from public city records
-      and our camera data. Figures are not edited by hand. Reference ${ref}.</p>
     </section>`;
 
   // Screen-only panel: the message for the road owner's form, and a demo Send.

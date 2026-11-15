@@ -1,5 +1,6 @@
-/* Repair request for the road owner. On screen: a sheet of paper on the dark page, so
-   what you see is what prints. Print: two letter pages, the request then the record. */
+/* Repair request for the road owner, set like a formal letter. On screen: a sheet of paper
+   on the dark page, so what you see is what prints. Print: two letter pages, the letter
+   then the exhibits. */
 :root {
   --page: #141415; --panel: #19191b; --panel-line: rgba(237, 237, 237, 0.08);
   --on-dark: #ededed; --on-dark-2: #a1a1a6;
@@ -7,7 +8,7 @@
   --paper: #ffffff; --ink: #171717; --ink-2: #4a4a4f; --ink-3: #6b6b70;
   --rule: rgba(0, 0, 0, 0.14); --tint: #f6f6f7;
   --paint: #f2c230; --paint-ink: #8a6700; --fixed-ink: #1f7a4d;
-  --sans: "Geist", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
+  --sans: "Geist", system-ui, sans-serif; --serif: "EB Garamond", Garamond, "Times New Roman", serif; --mono: "Geist Mono", ui-monospace, monospace;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--on-dark); font: 400 16px/1.5 var(--sans); }
@@ -35,110 +36,88 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--paint); outline
 .demo-note { margin: 12px 0 0; color: var(--on-dark-2); font-size: 14px; }
 
 /* ---- The sheet (paper) ----
-   Formal and plain: black ink, thin rules, numbered sections. Yellow only in the brand mark
-   and the map pin. */
-.sheet { max-width: 880px; margin: 0 auto; padding: 48px 56px; background: var(--paper); color: var(--ink); border-radius: 4px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); }
-.sheet a { color: var(--ink); text-underline-offset: 2px; text-decoration-color: var(--rule); }
+   A letter: serif type, black ink, thin rules, no boxes. Yellow only in the letterhead mark. */
+.sheet { max-width: 816px; margin: 0 auto; padding: 64px 72px; background: var(--paper); color: var(--ink); border-radius: 4px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); font: 400 17px/1.55 var(--serif); }
+.sheet a { color: inherit; font: inherit; text-decoration: none; }
 .sheet .muted { color: var(--ink-3); }
+.sheet .num { font-family: inherit; font-variant-numeric: tabular-nums; }
+.sheet p { margin: 0; }
 
-/* Letterhead: who it is from on the left, the reference box on the right. */
-.doc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
-.doc-brand { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 600; font-size: 17px; }
-.doc-brand::before { content: ""; width: 20px; height: 4px; background: var(--paint); }
-.doc-sub { margin: 2px 0 0 30px; color: var(--ink-3); font-size: 13px; }
-.doc-ref { border-collapse: collapse; border: 1px solid var(--ink); font-size: 12px; }
-.doc-ref th { padding: 4px 10px; text-align: left; font-weight: 500; color: var(--ink-3); background: var(--tint); border-bottom: 1px solid var(--rule); white-space: nowrap; }
-.doc-ref td { padding: 4px 10px; font: 500 12px var(--mono); border-bottom: 1px solid var(--rule); white-space: nowrap; }
-.doc-ref tr:last-child th, .doc-ref tr:last-child td { border-bottom: 0; }
+/* Letterhead */
+.letterhead { padding-bottom: 12px; border-bottom: 1px solid var(--ink); }
+.brand { display: flex; align-items: center; gap: 10px; font: 600 22px/1.2 var(--serif); letter-spacing: 0.01em; }
+.brand::before { content: ""; width: 20px; height: 4px; background: var(--paint); }
+.brand-sub { margin: 2px 0 0 30px !important; font-size: 14px; color: var(--ink-3); }
 
-h1 { margin: 24px 0 0; font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
-.doc-for { margin: 2px 0 0; font-size: 17px; color: var(--ink-2); }
+/* Date and reference on one line */
+.dateline { display: flex; justify-content: space-between; margin-top: 28px; font-variant-numeric: tabular-nums; }
 
-/* Numbered sections with a thin rule under the heading. */
-.block { margin-top: 22px; }
-.block h2 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); font-size: 13px; font-weight: 600; color: var(--ink); }
-.block h2 span { font: 500 12px var(--mono); color: var(--ink-3); }
+/* To / Re block */
+.address { margin-top: 24px; border-collapse: collapse; }
+.address th { width: 48px; padding: 0 16px 12px 0; text-align: left; vertical-align: top; font-weight: 600; }
+.address td { padding: 0 0 12px; vertical-align: top; }
+.address strong { font-weight: 600; }
+.address .muted { font-size: 15px; }
 
-/* 1. Location: label/value rows beside the map. */
-.where-grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
-.fields { border-collapse: collapse; width: 100%; font-size: 14px; }
-.fields th { width: 120px; padding: 5px 12px 5px 0; text-align: left; vertical-align: top; font-weight: 400; color: var(--ink-3); }
-.fields td { padding: 5px 0; vertical-align: top; }
-.fields .num { font-size: 13px; }
-.no-print-link { margin-left: 8px; font-family: var(--sans); font-size: 12px; }
-.map { position: relative; max-width: 100%; overflow: hidden; border: 1px solid var(--rule); background: var(--tint); }
-.map img { position: absolute; width: 256px; height: 256px; }
-.map-pin { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--paint); border: 3px solid var(--ink); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85); }
-.map-credit { position: absolute; right: 0; bottom: 0; padding: 1px 6px; background: rgba(255, 255, 255, 0.85); color: var(--ink-2); font-size: 10px; }
+/* Numbered paragraphs with a hanging number */
+.paras { margin: 20px 0 0; padding: 20px 0 0; border-top: 1px solid var(--rule); list-style: none; counter-reset: para; }
+.paras li { position: relative; padding-left: 32px; counter-increment: para; }
+.paras li + li { margin-top: 12px; }
+.paras li::before { content: counter(para) "."; position: absolute; left: 0; }
+.paras strong { font-weight: 600; }
 
-/* 2. The ask: the one thing the agency should read. */
-.request .ask { margin: 0; padding: 12px 16px; border: 1px solid var(--ink); font-size: 16px; font-weight: 500; }
-.request .basis { margin: 8px 0 0; font-size: 14px; color: var(--ink-2); }
+.exhibits { margin-top: 28px; }
+.exhibits .label { font-weight: 600; }
 
-/* 3. Key dates in one ruled row. */
-.key { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); margin: 0; }
-.key div { padding: 2px 12px 2px 0; }
-.key div + div { padding-left: 12px; border-left: 1px solid var(--rule); }
-.key dt { color: var(--ink-3); font-size: 12px; }
-.key dd { margin: 2px 0 0; font: 500 14px/1.3 var(--mono); font-variant-numeric: tabular-nums; }
+.signoff { margin-top: 36px; }
+.signoff .sig { margin-top: 32px; font-weight: 600; }
+.signoff .muted { margin-top: 4px; font-size: 14px; }
 
-/* 4. Photos side by side, captioned A and B. */
+/* ---- Exhibits ---- */
+.record { margin-top: 56px; padding-top: 32px; border-top: 1px dashed var(--rule); }
+.exhibit + .exhibit { margin-top: 32px; }
+.exhibit h2 { margin: 0 0 14px; padding-bottom: 6px; border-bottom: 1px solid var(--ink); font-size: 19px; font-weight: 600; }
+.exhibit h3 { margin: 18px 0 8px; font-size: 16px; font-weight: 600; }
+.exhibit h2 + h3 { margin-top: 0; }
+
 .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .photos figure { margin: 0; }
-.photos img, .photos .none { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--rule); background: var(--tint); }
-.photos .none { display: grid; place-items: center; color: var(--ink-3); font-size: 13px; }
-.photos figcaption { display: grid; gap: 2px; margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
-.photos figcaption b { font-weight: 600; color: var(--ink); }
+.photos img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--rule); }
+.photos .none { display: grid; place-items: center; height: 88px; border: 1px dashed var(--rule); color: var(--ink-3); font-size: 15px; }
+.photos figcaption { display: grid; gap: 2px; margin-top: 6px; font-size: 15px; }
+.photos figcaption span { color: var(--ink-2); }
 
-/* 5-6. Data tables: dark rule under the header, light rules between rows, dark rule at
-   the end. No other lines. */
-.data { width: 100%; border-collapse: collapse; font-size: 13px; border-bottom: 1px solid var(--ink); }
-.data th { padding: 0 12px 6px 0; text-align: left; font-weight: 500; font-size: 12px; color: var(--ink-3); border-bottom: 1px solid var(--ink); }
-.data td { padding: 7px 12px 7px 0; vertical-align: top; border: 0; }
+/* Tables: rule under the header, light rules between rows, rule at the end. */
+.data { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.45; border-bottom: 1px solid var(--ink); }
+.data th { padding: 0 12px 6px 0; text-align: left; font-weight: 600; border-bottom: 1px solid var(--ink); }
+.data td { padding: 6px 12px 6px 0; vertical-align: top; border: 0; }
 .data tbody tr + tr td { border-top: 1px solid var(--rule); }
 .data .r { text-align: right; }
-.data td.num { font-size: 12.5px; white-space: nowrap; }
+.data td.num { white-space: nowrap; }
 .data th:last-child, .data td:last-child { padding-right: 0; }
-tr.hit td:nth-child(3) { font-weight: 600; }
-.none-line { margin: 0; color: var(--ink-3); font-size: 13px; }
+.none-line { color: var(--ink-3); font-size: 15px; }
 
-/* 7-8. Method and sources, QR on the right. */
-.about { display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: start; }
-.about h2 + p { margin: 0 0 16px; font-size: 13px; color: var(--ink-2); }
-.about p:last-child { margin-bottom: 0; }
-.qr { margin: 28px 0 0; width: 120px; text-align: center; }
-.qr svg { display: block; width: 104px; height: 104px; margin: 0 auto; }
-.qr figcaption { margin-top: 6px; font-size: 11px; color: var(--ink-3); }
-
-.attest { margin: 28px 0 0; padding-top: 10px; border-top: 1px solid var(--rule); font-size: 11.5px; color: var(--ink-3); }
+.note { margin-top: 20px !important; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.note a { color: var(--ink); }
 
 @media screen and (max-width: 760px) {
-  .sheet { padding: 24px 20px; border-radius: 0; }
-  .where-grid, .photos, .about { grid-template-columns: 1fr; }
-  .doc-head { flex-direction: column; }
+  .sheet { padding: 32px 20px; border-radius: 0; }
+  .photos { grid-template-columns: 1fr; }
   .data { display: block; overflow-x: auto; }
 }
 
-/* ---- Print: two letter pages, white, small type. ---- */
+/* ---- Print: two letter pages, white. ---- */
 @media print {
-  @page { size: letter; margin: 14mm 14mm 18mm; }
-  body { background: #fff; font-size: 10pt; }
-  .no-print, .no-print-link { display: none !important; }
-  .sheet { max-width: none; padding: 0; box-shadow: none; border-radius: 0; }
-  h1 { margin-top: 12pt; font-size: 18pt; }
-  .doc-for { font-size: 12pt; }
-  .block { margin-top: 12pt; }
-  .where-grid { grid-template-columns: 1fr 300px; gap: 16pt; }
-  .request .ask { font-size: 11.5pt; padding: 8pt 12pt; }
-  .fields th, .fields td { padding-top: 3pt; padding-bottom: 3pt; }
-  .doc-head { padding-bottom: 10pt; }
-  /* Shorter photos so they stay on page 1 with the request. */
-  .photos { gap: 10pt; }
-  .photos img, .photos .none { aspect-ratio: 2 / 1; }
-  .photos figcaption { font-size: 8.5pt; }
-  .block, .data tr { break-inside: avoid; }
-  /* The record always starts on page 2. */
-  .record { break-before: page; }
-  .record > .block:first-child { margin-top: 0; }
-  .sheet a { text-decoration: none; }
+  @page { size: letter; margin: 22mm 22mm 20mm; }
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .sheet { max-width: none; padding: 0; box-shadow: none; border-radius: 0; font-size: 12pt; }
+  .address .muted { font-size: 11pt; }
+  .signoff .muted { font-size: 10pt; }
+  .photos img { aspect-ratio: 3 / 2; }
+  .photos figcaption, .data { font-size: 10.5pt; }
+  .note { font-size: 9.5pt; }
+  .exhibit, .data tr { break-inside: avoid; }
+  /* The exhibits always start on page 2. */
+  .record { break-before: page; margin-top: 0; padding-top: 0; border-top: 0; }
 }
