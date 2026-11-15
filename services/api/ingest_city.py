@@ -4,20 +4,13 @@
     python3 services/api/ingest_city.py            # last 120 days, our area
     python3 services/api/ingest_city.py --days 365
     python3 services/api/ingest_city.py --dry-run  # fetch + group, write nothing
-    python3 services/api/ingest_city.py --dry-run --check   # also run the model check, print verdicts
-    python3 services/api/ingest_city.py --recheck  # re-run the model check on every report
+    python3 services/api/ingest_city.py --no-check # skip the report check (step 5)
 
-Standard library only (no pip install). Reads DATABASE_URL (and OPENROUTER_API_KEY)
-from the environment or the repo's .env, and talks to Neon over its HTTPS SQL endpoint.
+Standard library only (no pip install). Reads DATABASE_URL from the environment or
+the repo's .env, and talks to Neon over its HTTPS SQL endpoint.
 
 What it does:
 1. Pulls request_type='Potholes' from the city FeatureServer inside our box.
-1b. Report check: the city's 'Potholes' type also holds sidewalk, curb, debris and bike-lane
-   reports. For each report not checked yet, it reads the SeeClickFix text + photo and asks a
-   small OpenRouter model (CITY_CHECK_MODEL) "is this a pothole / broken road surface?".
-   Verdict is stored on city_reports (check_verdict/_reason/_model). 'not_pothole' reports are
-   kept with pothole_id = NULL (not shown, like rejected detections). No key or a failed call =
-   unchecked, shown as before. Also fills photo_url from the SeeClickFix photo.
 2. Groups reports into potholes. A report keeps the pothole it already has in Neon
    (so the seeded Peterboro / Newark / Wabash ids and any detections on them stay
    put). Otherwise it joins the nearest pothole whose first report is within 50 m,
@@ -25,6 +18,11 @@ What it does:
 3. Upserts city_reports and potholes (lat/lon = average of the pothole's reports,
    address = newest report's address). photo_url is never overwritten with null.
 4. Recomputes state + last_seen_at for every pothole (rule in shared/CONTRACTS.md).
+
+5. Report check (#133): calls POST $API_BASE_URL/api/city-check until every new report is
+   checked. The city's Potholes type also holds sidewalk, curb, debris and bike-lane reports;
+   the API reads each one's SeeClickFix text + photo and asks a small model (key stays on
+   Vercel). 'not_pothole' reports keep pothole_id = NULL and this script never regroups them.
 
 Safe to rerun any time.
 """
@@ -34,9 +32,9 @@ import math
 import os
 import pathlib
 import sys
+import time
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 FEATURESERVER = os.environ.get(
@@ -46,43 +44,60 @@ FEATURESERVER = os.environ.get(
 # Newlab / Corktown / Midtown / Southwest (west, south, east, north). Same box as pitch/stats.
 BOX = (-83.13, 42.30, -83.04, 42.36)
 SAME_SPOT_M = 50
+API_BASE_URL_DEFAULT = "https://wayneawshackathon.vercel.app"
 PAGE = 2000
-SCF_ISSUE = "https://seeclickfix.com/api/v2/issues/{}"
-UA = "still-there-ingest/1.0"
-CHECK_MODEL = os.environ.get("CITY_CHECK_MODEL") or "google/gemini-3.5-flash-lite"
-CHECK_PROMPT = """You sort Detroit 311 reports that were filed under "Potholes".
-Decide if this report is about a pothole or broken road surface where cars drive.
-
-City's current category: {summary}
-Address: {address}
-Reporter's text: {text}
-{photo}
-Answer with ONLY this JSON, nothing else:
-{{"verdict": "pothole" | "not_pothole", "reason": "<one short sentence>"}}
-
-- "pothole": a hole, broken or missing asphalt, sinkhole, sunken or buckled pavement in a
-  street, alley, intersection, bike lane or driveway entrance.
-- "not_pothole": sidewalk, curb, something blocking the road (barrel, debris, trash, cars),
-  weeds, lights, signs, flooding, or anything that isn't damage to the driving surface.
-If the text is empty or only says pothole/hole and the photo doesn't show something else,
-say "pothole"."""
 
 
 # ---------- config ----------
 
-def env_var(name):
+def database_url():
+    if os.environ.get("DATABASE_URL"):
+        return os.environ["DATABASE_URL"]
+    env = pathlib.Path(__file__).resolve().parents[2] / ".env"
+    if env.exists():
+        for line in env.read_text().splitlines():
+            if line.startswith("DATABASE_URL="):
+                return line.split("=", 1)[1].split("#")[0].strip().strip('"').strip("'")
+    sys.exit("DATABASE_URL not set (env var or .env at the repo root)")
+
+
+def env_or_dotenv(name, default=None):
     if os.environ.get(name):
         return os.environ[name]
     env = pathlib.Path(__file__).resolve().parents[2] / ".env"
     if env.exists():
         for line in env.read_text().splitlines():
             if line.startswith(name + "="):
-                return line.split("=", 1)[1].split("#")[0].strip().strip('"').strip("'") or None
-    return None
+                v = line.split("=", 1)[1].split("#")[0].strip().strip('"').strip("'")
+                if v:
+                    return v
+    return default
 
 
-def database_url():
-    return env_var("DATABASE_URL") or sys.exit("DATABASE_URL not set (env var or .env at the repo root)")
+def run_city_check():
+    """Step 5: let the API check new reports (it holds the OpenRouter key)."""
+    base = env_or_dotenv("API_BASE_URL", API_BASE_URL_DEFAULT).rstrip("/")
+    last, waits = None, 0
+    while True:
+        req = urllib.request.Request(f"{base}/api/city-check?limit=10", data=b"", method="POST",
+                                     headers={"User-Agent": "still-there-ingest/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                res = json.load(r)
+        except Exception as e:
+            print(f"report check: {base}/api/city-check failed ({e}); run again later")
+            return
+        print(f"report check: {res['checked']} checked, {res['not_pothole']} not a pothole, "
+              f"{res['failed']} failed, {res['remaining']} left")
+        if res.get("busy") and waits < 10:  # SeeClickFix rate limit: back off, then carry on
+            waits += 1
+            print("  SeeClickFix is rate-limiting; waiting 60 s")
+            time.sleep(60)
+            continue
+        if not res["remaining"] or res["remaining"] == last:
+            return
+        last = res["remaining"]
+        time.sleep(5)  # gentle on SeeClickFix
 
 
 # ---------- Neon over HTTPS ----------
@@ -164,99 +179,6 @@ def clean(a):
     }
 
 
-# ---------- report check (SeeClickFix text + photo -> small model) ----------
-
-def scf_issue(issue_id):
-    """SeeClickFix's public record for a report: category, text, photo. None if unavailable."""
-    req = urllib.request.Request(SCF_ISSUE.format(issue_id),
-                                 headers={"User-Agent": UA, "Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            d = json.load(r)
-    except Exception as e:
-        print(f"  seeclickfix {issue_id}: {e}")
-        return None
-    return {
-        "summary": (d.get("summary") or "").strip(),
-        "text": (d.get("description") or "").strip(),
-        "photo": (d.get("media") or {}).get("image_full"),
-    }
-
-
-def parse_check(text):
-    """{"verdict","reason"} from a model reply, or None."""
-    text = text or ""
-    i, j = text.find("{"), text.rfind("}")
-    verdict = reason = ""
-    if i >= 0 and j > i:
-        try:
-            obj = json.loads(text[i:j + 1])
-            verdict = str(obj.get("verdict", "")).strip().lower()
-            reason = str(obj.get("reason", "")).strip()
-        except ValueError:
-            pass
-    if not verdict:
-        low = text.lower()
-        verdict = "not_pothole" if "not_pothole" in low else ("pothole" if "pothole" in low else "")
-    if verdict not in ("pothole", "not_pothole"):
-        return None
-    return {"verdict": verdict, "reason": (reason or verdict)[:300]}
-
-
-def ask_model(key, prompt, photo):
-    content = [{"type": "text", "text": prompt}]
-    if photo:
-        content.append({"type": "image_url", "image_url": {"url": photo}})
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
-        data=json.dumps({"model": CHECK_MODEL, "temperature": 0, "max_tokens": 150,
-                         "messages": [{"role": "user", "content": content}]}).encode(),
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        reply = json.load(r)["choices"][0]["message"]["content"]
-    return parse_check(reply if isinstance(reply, str) else json.dumps(reply))
-
-
-def check_report(r, key):
-    """Fills r's check_verdict/_reason/_model (+ photo_url). Leaves them unset on any failure."""
-    scf = scf_issue(r["issue_id"])
-    if not scf:
-        return r
-    if scf["photo"]:
-        r["photo_url"] = scf["photo"]
-    base = dict(summary=scf["summary"] or "Potholes", address=r.get("address") or "unknown",
-                text=scf["text"][:1500] or "(none)")
-    got = None
-    # Try with the photo first; if OpenRouter can't load it, ask again on the text alone.
-    for photo in ([scf["photo"], None] if scf["photo"] else [None]):
-        prompt = CHECK_PROMPT.format(**base, photo="The reporter's photo is attached." if photo else "No photo.")
-        try:
-            got = ask_model(key, prompt, photo)
-            if got:
-                break
-        except Exception as e:
-            print(f"  check {r['issue_id']}: {e}")
-    if got:
-        r["check_verdict"], r["check_reason"], r["check_model"] = got["verdict"], got["reason"], CHECK_MODEL
-    return r
-
-
-def check_reports(reports, key, recheck=False):
-    todo = [r for r in reports if recheck or not r.get("check_verdict")]
-    if not todo:
-        return
-    print(f"checking {len(todo)} reports with {CHECK_MODEL} ...")
-    with ThreadPoolExecutor(3) as ex:  # gentle on SeeClickFix
-        list(ex.map(lambda r: check_report(r, key), todo))
-    bad = [r for r in todo if r.get("check_verdict") == "not_pothole"]
-    done = sum(1 for r in todo if r.get("check_verdict"))
-    print(f"checked {done}/{len(todo)}: {len(bad)} not a pothole")
-    for r in bad:
-        print(f"  x {r['issue_id']} {r.get('address', '')[:40]}: {r['check_reason']}")
-
-
 # ---------- grouping ----------
 
 def meters(a, b):
@@ -320,8 +242,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--days", type=int, default=120)
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--check", action="store_true", help="with --dry-run: also run the model check")
-    ap.add_argument("--recheck", action="store_true", help="re-run the model check on every report")
+    ap.add_argument("--no-check", action="store_true", help="skip the report check (step 5)")
     args = ap.parse_args()
 
     fresh = fetch_city(args.days)
@@ -331,8 +252,7 @@ def main():
     ts = lambda c: f"to_char({c} AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')"
     old = [] if args.dry_run else sql(url, f"""
         SELECT issue_id, address, lat, lon, status, {ts('created_at')} AS created_at,
-               {ts('closed_at')} AS closed_at, issue_url, photo_url, pothole_id,
-               check_verdict, check_reason, check_model FROM city_reports""")
+               {ts('closed_at')} AS closed_at, issue_url, pothole_id, check_verdict FROM city_reports""")
     for r in old:
         r["lat"], r["lon"] = float(r["lat"]), float(r["lon"])
 
@@ -340,14 +260,7 @@ def main():
     merged = {r["issue_id"]: r for r in old}
     merged.update({r["issue_id"]: {**merged.get(r["issue_id"], {}), **r} for r in fresh})
     reports = list(merged.values())
-
-    key = env_var("OPENROUTER_API_KEY")
-    if key and (not args.dry_run or args.check):
-        check_reports(reports, key, args.recheck)
-    elif not args.dry_run or args.check:
-        print("OPENROUTER_API_KEY not set: skipping the report check (new reports shown unchecked)")
-
-    # Reports the check rejected are kept but join no pothole (not shown on the map).
+    # Reports the check rejected stay stored but join no pothole (not shown on the map).
     kept = [r for r in reports if r.get("check_verdict") != "not_pothole"]
     assign = group(kept, {r["issue_id"]: r.get("pothole_id") for r in old})
     for r in reports:
@@ -365,25 +278,17 @@ def main():
         return
 
     # Upsert city_reports.
-    cols = ("issue_id", "address", "lat", "lon", "status", "created_at", "closed_at", "issue_url",
-            "photo_url", "pothole_id", "check_verdict", "check_reason", "check_model")
     sql(url, """
-        INSERT INTO city_reports (issue_id, address, lat, lon, status, created_at, closed_at, issue_url,
-                                  photo_url, pothole_id, check_verdict, check_reason, check_model)
-        SELECT issue_id, address, lat, lon, status, created_at, closed_at, issue_url,
-               photo_url, pothole_id, check_verdict, check_reason, check_model
+        INSERT INTO city_reports (issue_id, address, lat, lon, status, created_at, closed_at, issue_url, pothole_id)
+        SELECT issue_id, address, lat, lon, status, created_at, closed_at, issue_url, pothole_id
           FROM jsonb_to_recordset($1::jsonb) AS x(issue_id text, address text, lat float8, lon float8,
-               status text, created_at timestamptz, closed_at timestamptz, issue_url text,
-               photo_url text, pothole_id text, check_verdict text, check_reason text, check_model text)
+               status text, created_at timestamptz, closed_at timestamptz, issue_url text, pothole_id text)
         ON CONFLICT (issue_id) DO UPDATE SET
           address = EXCLUDED.address, lat = EXCLUDED.lat, lon = EXCLUDED.lon, status = EXCLUDED.status,
           created_at = EXCLUDED.created_at, closed_at = EXCLUDED.closed_at,
-          issue_url = EXCLUDED.issue_url, pothole_id = EXCLUDED.pothole_id,
-          photo_url = coalesce(EXCLUDED.photo_url, city_reports.photo_url),
-          check_verdict = coalesce(EXCLUDED.check_verdict, city_reports.check_verdict),
-          check_reason = coalesce(EXCLUDED.check_reason, city_reports.check_reason),
-          check_model = coalesce(EXCLUDED.check_model, city_reports.check_model)""",
-        [json.dumps([{k: r.get(k) for k in cols} for r in reports])])
+          issue_url = EXCLUDED.issue_url, pothole_id = EXCLUDED.pothole_id""",
+        [json.dumps([{k: r[k] for k in ("issue_id", "address", "lat", "lon", "status", "created_at",
+                                        "closed_at", "issue_url", "pothole_id")} for r in reports])])
 
     # Detections already attached, for state.
     dets = sql(url, f"""SELECT pothole_id, verdict, {ts('captured_at')} AS captured_at
@@ -420,6 +325,9 @@ def main():
     counts = {r["state"]: int(r["n"]) for r in
               sql(url, "SELECT state, count(*) AS n FROM potholes GROUP BY state")}
     print(f"wrote {len(reports)} city_reports, {len(rows)} potholes; states: {counts}")
+
+    if not args.no_check:
+        run_city_check()
 
 
 if __name__ == "__main__":

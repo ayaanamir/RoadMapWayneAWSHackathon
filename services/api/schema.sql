@@ -213,3 +213,4 @@ ALTER TABLE city_reports ADD COLUMN IF NOT EXISTS check_verdict text
   CHECK (check_verdict IN ('pothole', 'not_pothole'));
 ALTER TABLE city_reports ADD COLUMN IF NOT EXISTS check_reason text;
 ALTER TABLE city_reports ADD COLUMN IF NOT EXISTS check_model text;
+ALTER TABLE city_reports ADD COLUMN IF NOT EXISTS check_attempts int NOT NULL DEFAULT 0;
