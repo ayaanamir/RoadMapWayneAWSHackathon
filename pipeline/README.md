@@ -4,9 +4,9 @@ Drive footage + GPS → verified `Detection`s → API.
 Rules: `AGENTS.md` here + at repo root. Progress: `ROADMAP.md`.
 
 ## Run
-_Owner fills in:_
-- Install: `pip install -r pipeline/requirements.txt` (+ system `ffmpeg`, `exiftool`)
-- Process a clip: `…`
+- Install: `pip install -r pipeline/requirements.txt` (+ system `ffmpeg`)
+- Process a drive: `python pipeline/run_drive.py --drive path/to/drive --dry-run` (details below)
+- Model training and evaluation: `pipeline/train/`, results in `MODEL_REPORT.md`
 
 ## run_drive.py
 Offline drive pipeline: the phone recorder's files (`drive_<UTC>_seg<N>.mp4`, `.json` sidecars,

@@ -7,7 +7,7 @@ Rules: `AGENTS.md` here + at repo root. Progress: `ROADMAP.md`.
 From the repo root: `python3 -m http.server 8000` → open http://localhost:8000/apps/map/
 
 ## Hosted URL
-_Owner fills in:_ `…`
+https://wayneawshackathon.vercel.app/ (map), `/report?id=<pothole_id>` (repair request), `/label`, `/test`
 
 ## /test — model accuracy on recorded footage
 `apps/map/test.html` (route `/test`). Load a clip (stays in the browser), run the live model

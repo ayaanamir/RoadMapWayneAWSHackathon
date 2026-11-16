@@ -57,3 +57,12 @@ Next in this area: #49 `DEMO.md`, best done once the map (#15 to #18) exists.
   to expect (white ring at Newlab, yellow only next to a closed city report), new
   rehearsal check that a photo on a screen gets "pothole", new fallback line.
 - `SCRIPT.md`: the phone line and step 3 now say the vision model checks phone sightings too.
+
+## Final cleanup after the event (branch repo/final-cleanup)
+
+- New README GIF from our own Corktown drive: the live page boxes the pothole, the vision
+  check confirms it, and it goes on the map as a new pothole.
+- `tools/make_reel.py`: the demo reel tool (dash-cam model on a folder of clips, one looping
+  MP4, README GIFs). Threshold 0.35 by default, since 0.10 boxed curb rocks.
+- `SCRIPT.md`, `DEMO.md`, `SUBMISSION.md` marked as records of the event; the `[fill]` spots in
+  `SUBMISSION.md` filled with what actually happened.

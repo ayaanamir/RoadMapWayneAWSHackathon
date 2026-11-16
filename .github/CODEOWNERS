@@ -1,7 +1,8 @@
-# Fill in GitHub handles (e.g. @ayaanamir). One owner per area.
-# /services/api/   @BACKBONE_HANDLE
-# /apps/map/       @BACKBONE_HANDLE
-# /pipeline/       @FOOTAGE_HANDLE
-# /apps/live/      @LIVE_HANDLE
-# /pitch/          @LIVE_HANDLE
-# /shared/         @ayaanamir @BACKBONE_HANDLE @FOOTAGE_HANDLE @LIVE_HANDLE
+# One owner per area (see AGENTS.md).
+/api/            @ayaanamir
+/services/api/   @ayaanamir
+/apps/map/       @ayaanamir
+/pipeline/       @MuqC
+/apps/live/      @ado11231
+/pitch/          @ado11231
+/shared/         @ayaanamir @MuqC @ado11231

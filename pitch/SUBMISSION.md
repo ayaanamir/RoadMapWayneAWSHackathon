@@ -1,5 +1,7 @@
 # Shipyard submission draft (#52)
 
+> **The hackathon ended on Sunday, November 15, 2026.** Kept as a record. The two `[fill]` spots are now filled with what actually happened.
+
 Copy each part into the matching field on the Shipyard form. Field names may differ;
 the parts are the usual ones. `[fill]` = waiting on the drive (#35) or the final numbers.
 Before submitting: rerun `python3 pitch/stats/repeat_reports.py --days 365` and update
@@ -37,7 +39,7 @@ the same spot again after it was closed. That is 91 different spots.
 
 One of them is 73 Peterboro Street, a few blocks from Newlab. Reported on September 13,
 closed the next day. Reported again on October 15, closed five days later.
-On November 14 we drove past it: [fill: what we saw].
+We did not get to drive past it. Instead, a 7 minute drive through Corktown on November 15 sent 105 sightings: the vision check confirmed 1 new pothole the city had no report for, labeled 22 as old repairs, and rejected 82.
 
 ### What it does
 
@@ -92,7 +94,7 @@ Leaflet, Improve Detroit open data, JavaScript, TypeScript, Python
 | Live demo | https://wayneawshackathon.vercel.app/ |
 | Phone page | https://wayneawshackathon.vercel.app/live |
 | Code | https://github.com/ayaanamir/RoadMapWayneAWSHackathon |
-| Video | [fill: backup demo video link, #50] |
+| Video | https://still-there-drives.vercel.app/ (drive video and drive report) |
 
 ## Team
 

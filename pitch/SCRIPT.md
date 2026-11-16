@@ -1,5 +1,7 @@
 # Pitch script v1 (#47)
 
+> **The hackathon ended on Sunday, November 15, 2026.** This is the Saturday draft, kept as a record. The `[fill]` spots waited on a Peterboro drive that was dropped; the final demo used the Corktown drive instead (see the root `README.md`).
+
 Target: under 3 minutes. Now about 445 spoken words, which is right at 3 minutes at a
 normal pace. If it runs long, cut section 5 first. Numbers come from `STATS.md`.
 Lines in _italics_ are notes for the speaker, not words to say.
