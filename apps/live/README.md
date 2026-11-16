@@ -1,6 +1,6 @@
 # apps/live
 
-Phone web page: camera, then YOLO in the browser, then boxes on screen. Later it also
+Phone web page: camera, then YOLO in the browser, then boxes on screen. It also
 sends GPS + the frame to the API as a detection.
 Rules: `AGENTS.md` here and at the repo root. Progress: `ROADMAP.md`. What is being worked
 on right now: `WORKLOG.md`.

@@ -1,24 +1,45 @@
 # Still There?
 
-![Our pothole model on a Detroit street](pitch/media/demo.gif)
+![The live phone page boxes a pothole on a real Detroit drive, then the vision check confirms it and it goes on the map](pitch/media/demo.gif)
 
 **The city closes pothole reports in days. We check whether they actually got fixed.**
 
-Still There? takes Detroit's public pothole reports, checks the road with a phone or dash cam,
-and shows each pothole's history on one map: reported, closed, and then still there or fixed.
+Detroit marks most pothole reports closed within about two days, but nobody goes back to look at the road. Still There? pulls the city's public pothole reports, scans the road with a phone on the windshield, and shows each pothole's history on one map: reported, closed, and then still there or fixed.
 
-## Live Demo
+Built in 24 hours by a team of three at the Wayne AWS Hackathon, November 14 to 15, 2026.
+
+## Links
 
 - Map: https://wayneawshackathon.vercel.app/
 - Phone camera page: https://wayneawshackathon.vercel.app/live
-- Repair request: open any pin on the map and choose "Evidence report and PDF"
+- Test drive write-up, with video and the full drive report: https://still-there-drives.vercel.app/
+
+## Results
+
+- **The problem is real.** Near Newlab, 155 of 588 closed pothole reports (26%) were reported again at the same spot within a year. That is 91 different spots. Source and method: `pitch/STATS.md`.
+- **The check works on a real drive.** On a 7 minute, 1.6 mile drive through Corktown, the phone sent 105 sightings. The vision check confirmed 1 new pothole the city had no report for, labeled 22 as old repairs, and rejected 82 as cracks, paint, or shadows.
 
 ## How It Works
 
-1. **City data.** We pull pothole reports from Improve Detroit and group reports within 50 m into one pothole.
-2. **Detection.** A small pothole model runs in the browser on a phone or dash cam, so it keeps up with a moving car.
-3. **Second check.** A larger vision model reviews each hit and decides pothole, patch, or shadow, with a one-line reason.
-4. **Map and report.** Confirmed potholes appear on the map, and each one can be turned into a repair request for the road owner.
+1. **City data.** We pull pothole reports from Improve Detroit, the city's open data, and group reports within 50 m into one pothole.
+2. **Detection.** A small YOLO model runs in the phone's browser with ONNX Runtime Web, so it keeps up with a moving car. Only frames with a box are sent, along with GPS.
+3. **Second check.** A larger vision model on the server reviews each frame and answers pothole, patched, or not a pothole, with a one-line reason. Only a confirmed pothole changes the map.
+4. **Map and report.** Each pin shows its timeline. Any pin can become a repair request addressed to the road owner: the City of Detroit, or the state (MDOT) for state routes and freeways.
+
+```
+Improve Detroit reports            Phone or dash cam
+          |                               |
+          | services/api/ingest_city.py   | YOLO in the browser (apps/live)
+          v                               v
+   +---------------------- API on Vercel (api/) ----------------------+
+   |  photo     -> Cloudflare R2                                      |
+   |  sighting  -> vision check (OpenRouter): pothole, patch, shadow  |
+   |  all data  -> Neon Postgres                                      |
+   +-------------------------------------------------------------------+
+                                  |
+                                  v
+                Map, timeline, and repair request (apps/map)
+```
 
 ## Team
 
@@ -30,25 +51,25 @@ and shows each pothole's history on one map: reported, closed, and then still th
 
 ## Tech Stack
 
-- Pothole model: YOLO11, run in the browser with ONNX Runtime Web
+- Pothole model: YOLO11, run in the browser with ONNX Runtime Web (WebGPU, WASM fallback)
 - Vision check: OpenRouter
-- Hosting and API: Vercel
+- Hosting and API: Vercel Functions (TypeScript)
 - Database: Neon Postgres
 - Images: Cloudflare R2
-- Map: Leaflet
+- Map: Leaflet with CARTO and OpenStreetMap tiles
 - City data: Improve Detroit open data
 
 ## Project Layout
 
 ```
 api/            REST API (Vercel Functions)
-apps/live/      phone camera page
-apps/map/       map, repair request, and labeling pages
-services/api/   database schema and city data import
-pipeline/       drive footage processing and model training
-pitch/          pitch script, demo plan, demo video tools
-shared/         data contracts and sample data
-docs/           team workflow and requests
+apps/live/      phone camera page, drive recorder, drive report
+apps/map/       map, repair request, labeling and model test pages
+services/api/   database schema, city data import, API tests
+pipeline/       drive footage processing, model training and evaluation
+pitch/          pitch script, demo plan, stats, demo reel tool
+shared/         data contracts, JSON schemas, sample data
+docs/           team workflow and cross-area requests
 ```
 
 ## Run It Locally
@@ -58,20 +79,15 @@ docs/           team workflow and requests
 3. Start the site and API: `npx vercel dev`
 4. Open `http://localhost:3000` for the map and `http://localhost:3000/live` for the phone page.
 
-The data shapes every part of the project shares are in `shared/CONTRACTS.md`.
+Without `DATABASE_URL`, `/api/potholes` serves the sample data in `shared/fixtures/`. The map and phone page are static files, so `python3 -m http.server 8000` from the repo root also works for a quick look.
 
-## Team Workflow
+More detail per area:
 
-- Tasks live on the [project board](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues). See it with `python3 scripts/board.py`.
-- Claim a task before starting: `python3 scripts/board.py claim <#> "<you>/<agent>"`
-- Team chat is [issue #1](https://github.com/ayaanamir/RoadMapWayneAWSHackathon/issues/1). Read it with `python3 scripts/chat.py read`.
-- Rules for working in this repo are in `AGENTS.md` and `docs/WORKFLOW.md`.
+- API, ingest, and tests: `services/api/README.md` (unit tests: `node --test services/api/tests/*.test.ts`)
+- Phone page: `apps/live/README.md`
+- Drive pipeline and models: `pipeline/README.md`, `pipeline/MODEL_REPORT.md`
+- Data shapes shared by every part: `shared/CONTRACTS.md`
 
-## Timeline
+## How We Worked
 
-| When | Goal |
-|---|---|
-| Sat 6:00 PM | Map shows real city reports with timelines |
-| Sat midnight | First drive clip processed onto a pin |
-| Sun 8:00 AM | Feature freeze, bug fixes and backup video only |
-| Sun 11:30 AM | Submitted on Shipyard (deadline 12:00) |
+Three people each ran their own AI coding agents in parallel. To keep them from overwriting each other, every area had one owner, areas talked only through the API and `shared/CONTRACTS.md`, tasks lived on a GitHub issue board, and the agents posted progress in a shared chat issue. The rules are in `AGENTS.md` and `docs/WORKFLOW.md`, and the helper scripts are in `scripts/`.

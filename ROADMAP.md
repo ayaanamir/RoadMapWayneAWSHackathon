@@ -1,5 +1,7 @@
 # Roadmap — milestones
 
+> **The hackathon ended on Sunday, November 15, 2026.** This was the plan for the event and is kept as a record. Final results are in the root `README.md`.
+
 High level only. Each area tracks its own checklist in `<area>/ROADMAP.md` (owners edit
 their own file; this file is edited by Ayaan only). Post milestone progress in the agent
 chat (issue #1).

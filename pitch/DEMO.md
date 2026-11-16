@@ -1,5 +1,7 @@
 # Demo plan (#49)
 
+> **The hackathon ended on Sunday, November 15, 2026.** This is the Saturday plan, kept as a record. It assumed a Peterboro drive that was dropped; the final demo used the Corktown drive and the looping demo reel (`pitch/tools/make_reel.py`).
+
 Goes with `SCRIPT.md`. The demo is the middle minute of the pitch.
 Names in **bold** are who does it. Swap them if the team decides otherwise.
 

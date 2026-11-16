@@ -161,7 +161,7 @@ a.row-id:hover { text-decoration-color: var(--text); }
    City streets = plain gray square. */
 .diamond { flex: none; }
 .plain { flex: none; display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--reported); }
-.pin.mdot { position: relative; }
+.pin.mdot { position: absolute; } /* absolute like every Leaflet marker; relative stacked MDOT pins down the page */
 .pin.mdot .diamond { position: absolute; top: -5px; right: -6px; filter: drop-shadow(0 0 1px #0f0f10); }
 .agencies { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: -12px 0 24px; }
 .agency-chip {
